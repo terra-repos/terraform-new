@@ -1,0 +1,65 @@
+# Use Node.js LTS (20) image
+FROM node:20-alpine AS base
+
+# Install system dependencies
+FROM base AS deps
+RUN apk add --no-cache libc6-compat python3 make g++
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json ./
+
+# Install dependencies with force flag
+RUN npm install --force
+
+# Builder stage
+FROM base AS builder
+WORKDIR /app
+
+# Copy dependencies
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_hZVOZXmGKWbd2yQF-nIoRw_6mFStDEt
+ENV NEXT_PUBLIC_SUPABASE_URL=https://ixyayiuaettmhnlxrszz.supabase.co
+ENV NEXT_PUBLIC_POSTHOG_KEY=phc_bxnI54ZXCYZcgcoW93DtKzqHNL5lMcQUe09W8X9OnNJ
+ENV NEXT_PUBLIC_POSTHOG_PROJECT_ID=209525
+ENV NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
+ENV NEXT_PUBLIC_PUBLISHABLE_TERMINAL49_API_KEY=pk_qdk8kGLKP8MSrbR3jsQvDBNH
+ENV NEXT_PUBLIC_IMAGE_BASE_URL=https://images.useterra.com
+
+
+# Clean .next folder and build
+RUN rm -rf .next
+RUN npm run build
+
+# Runner stage
+FROM base AS runner
+WORKDIR /app
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copy necessary files
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/package.json ./package.json
+
+# Set up .next directory
+RUN mkdir .next
+RUN chown nextjs:nodejs .next
+
+# Copy built application
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Switch to non-root user
+USER nextjs
+
+# Expose port and set host
+EXPOSE 3000
+ENV PORT 3000
+ENV HOSTNAME "0.0.0.0"
+
+# Start the application
+CMD ["node", "server.js"]
