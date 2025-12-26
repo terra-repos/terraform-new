@@ -62,6 +62,7 @@ export async function loadSecrets() {
     STRIPE_SECRET_KEY: `STRIPE_SECRET_KEY_${ENV_SUFFIX}`,
     GCP_CREDENTIALS_JSON: `GCP_CREDENTIALS_JSON_${ENV_SUFFIX}`,
     GOOGLE_CLOUD_BUCKET: `GOOGLE_CLOUD_BUCKET_${ENV_SUFFIX}`,
+    GOOGLE_GENERATIVE_AI_API_KEY: `GOOGLE_GENAI_API_KEY`,
     SENDGRID_API_KEY: "SENDGRID_API_KEY",
     POSTHOG_PERSONAL_API_KEY: "POSTHOG_PERSONAL_API_KEY",
     ANTHROPIC_API_KEY: "ANTHROPIC_API_KEY",
@@ -90,6 +91,6 @@ export async function loadSecrets() {
   console.log(
     `\n✓ Welcome ${
       email || "developer"
-    }. You are working on the Terra OMS. Happy coding :)`
+    }. You are working on the Terraform platform. Happy coding :)`
   );
 }
