@@ -1,18 +1,8 @@
-import type { Metadata } from "next";
-import type { ReactNode } from "react";
+import { type ReactNode } from "react";
 import { Geist } from "next/font/google";
-import { ThemeProvider } from "next-themes";
 import "./globals.css";
-
-const defaultUrl = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : "http://localhost:3000";
-
-export const metadata: Metadata = {
-  metadataBase: new URL(defaultUrl),
-  title: "Terraform",
-  description: "Design and sell your products",
-};
+import LayoutShell, { type UserData } from "@/app/_components/layout-shell";
+import { createClient } from "@/lib/supabase/server";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,22 +10,40 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
-export default function RootLayout({
+async function getUser(): Promise<UserData> {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) return null;
+
+  const { data: userData } = await supabase
+    .from("profiles")
+    .select("first_name, last_name, pfp_src")
+    .eq("user_id", authUser.id)
+    .single();
+
+  if (!userData) return null;
+
+  return {
+    firstName: userData.first_name,
+    lastName: userData.last_name,
+    pfpSrc: userData.pfp_src,
+  };
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: ReactNode;
 }>) {
+  const user = await getUser();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.className} antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-        </ThemeProvider>
+        <LayoutShell user={user}>{children}</LayoutShell>
       </body>
     </html>
   );

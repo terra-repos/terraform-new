@@ -12,7 +12,8 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { uploadImage } from "./uploadImage";
+import { uploadImage } from "../uploadImage";
+import FinalizeModal from "@/components/finalize-modal";
 
 const cn = (...classes: (string | boolean | undefined)[]) =>
   classes.filter(Boolean).join(" ");
@@ -41,6 +42,9 @@ export default function DesignChat() {
   const [notes, setNotes] = useState("");
   const [generatedAngles, setGeneratedAngles] = useState<string[]>([]);
   const [isGeneratingAngles, setIsGeneratingAngles] = useState(false);
+  const [customizations, setCustomizations] = useState<string[]>([]);
+  const [isGeneratingCustomizations, setIsGeneratingCustomizations] =
+    useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -65,6 +69,8 @@ export default function DesignChat() {
   const openFinalizeModal = async () => {
     setShowFinalizeModal(true);
     setIsGeneratingTitle(true);
+    setIsGeneratingCustomizations(true);
+    setCustomizations([]);
 
     // Set current image as reference image
     const currentImage = getCurrentImage();
@@ -85,6 +91,24 @@ export default function DesignChat() {
       setProductTitle("Untitled Product");
     } finally {
       setIsGeneratingTitle(false);
+    }
+
+    try {
+      const response = await fetch("/api/design/generate-customizations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages }),
+      });
+      const data = await response.json();
+      const items = Array.isArray(data.customizations)
+        ? data.customizations
+        : [];
+      setCustomizations(items);
+    } catch (error) {
+      console.error("Failed to generate customizations:", error);
+      setCustomizations([]);
+    } finally {
+      setIsGeneratingCustomizations(false);
     }
   };
 
@@ -623,47 +647,6 @@ export default function DesignChat() {
                               Version {displayIndex} of {totalVersions}
                             </p>
                           )}
-
-                          {/* Generate Angles Button */}
-                          <button
-                            onClick={generateAngles}
-                            disabled={isGeneratingAngles}
-                            className="px-4 py-2 text-sm font-medium bg-neutral-900 text-white rounded-lg hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                          >
-                            {isGeneratingAngles ? (
-                              <>
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Generating angles...
-                              </>
-                            ) : (
-                              "Generate 3 Angles"
-                            )}
-                          </button>
-
-                          {/* Display Generated Angles */}
-                          {generatedAngles.length > 0 && (
-                            <div className="mt-6">
-                              <p className="text-sm text-neutral-600 mb-3 font-medium">
-                                Generated Angles
-                              </p>
-                              <div className="grid grid-cols-3 gap-4">
-                                {generatedAngles.map((angleUrl, idx) => (
-                                  <div key={idx} className="flex flex-col items-center gap-2">
-                                    <Image
-                                      src={angleUrl}
-                                      alt={`${["Front", "Side", "Top"][idx]} view`}
-                                      width={200}
-                                      height={200}
-                                      className="rounded-lg object-contain border border-neutral-200"
-                                    />
-                                    <p className="text-xs text-neutral-500">
-                                      {["Front View", "Side View", "Top View"][idx]}
-                                    </p>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
                         </div>
 
                         {/* Right arrow */}
@@ -816,190 +799,35 @@ export default function DesignChat() {
       )}
 
       {/* Finalize Production Details Modal */}
-      {showFinalizeModal && (
-        <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-          onClick={() => setShowFinalizeModal(false)}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="border-b border-neutral-200 px-8 py-6">
-              <h2 className="text-2xl font-bold text-neutral-900">
-                Finalize Production Details
-              </h2>
-            </div>
-
-            {/* Modal Content */}
-            <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
-              {/* Product Title */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Product Title
-                </label>
-                {isGeneratingTitle ? (
-                  <div className="flex items-center gap-2 text-neutral-500">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm">Generating title...</span>
-                  </div>
-                ) : (
-                  <input
-                    type="text"
-                    value={productTitle}
-                    onChange={(e) => setProductTitle(e.target.value)}
-                    className="w-full px-4 py-3 text-lg font-semibold border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900"
-                    placeholder="Enter product title"
-                  />
-                )}
-              </div>
-
-              {/* Reference Images */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-500 mb-3">
-                  Reference Images
-                </label>
-                <div className="flex gap-3 flex-wrap">
-                  {referenceImages.map((imageUrl, index) => (
-                    <div key={index} className="relative">
-                      <Image
-                        src={imageUrl}
-                        alt={`Reference ${index + 1}`}
-                        width={150}
-                        height={150}
-                        className="rounded-lg object-cover h-32 w-32 border border-neutral-200"
-                      />
-                      <button
-                        onClick={() => setReferenceImages(prev => prev.filter((_, i) => i !== index))}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                  <button className="h-32 w-32 border-2 border-dashed border-neutral-300 rounded-lg flex items-center justify-center text-neutral-400 hover:border-neutral-400 hover:text-neutral-500 transition-colors">
-                    <Plus className="h-6 w-6" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Dimensions */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-500 mb-3">
-                  Dimensions (in)
-                </label>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs text-neutral-600 mb-1">Length:</label>
-                    <input
-                      type="text"
-                      value={dimensions.length}
-                      onChange={(e) => setDimensions(prev => ({ ...prev, length: e.target.value }))}
-                      className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-neutral-600 mb-1">Width:</label>
-                    <input
-                      type="text"
-                      value={dimensions.width}
-                      onChange={(e) => setDimensions(prev => ({ ...prev, width: e.target.value }))}
-                      className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-neutral-600 mb-1">Height:</label>
-                    <input
-                      type="text"
-                      value={dimensions.height}
-                      onChange={(e) => setDimensions(prev => ({ ...prev, height: e.target.value }))}
-                      className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900"
-                    />
-                  </div>
-                </div>
-
-                {/* Custom Dimensions */}
-                {customDimensions.map((dim, index) => (
-                  <div key={index} className="grid grid-cols-2 gap-4 mt-3">
-                    <input
-                      type="text"
-                      value={dim.name}
-                      onChange={(e) => {
-                        const updated = [...customDimensions];
-                        updated[index].name = e.target.value;
-                        setCustomDimensions(updated);
-                      }}
-                      placeholder="Dimension name"
-                      className="px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900"
-                    />
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={dim.value}
-                        onChange={(e) => {
-                          const updated = [...customDimensions];
-                          updated[index].value = e.target.value;
-                          setCustomDimensions(updated);
-                        }}
-                        placeholder="Value"
-                        className="flex-1 px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900"
-                      />
-                      <button
-                        onClick={() => setCustomDimensions(prev => prev.filter((_, i) => i !== index))}
-                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-
-                <button
-                  onClick={() => setCustomDimensions(prev => [...prev, { name: "", value: "" }])}
-                  className="mt-3 px-4 py-2 bg-neutral-600 text-white text-sm rounded-lg hover:bg-neutral-700 transition-colors"
-                >
-                  Add Custom Dimension
-                </button>
-              </div>
-
-              {/* Note */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Note
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={4}
-                  placeholder="Add any additional notes or special instructions here..."
-                  className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 resize-none"
-                />
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="border-t border-neutral-200 px-8 py-6 flex justify-end gap-3">
-              <button
-                onClick={() => setShowFinalizeModal(false)}
-                className="px-6 py-3 text-sm font-medium text-neutral-700 border-2 border-orange-500 rounded-lg hover:bg-orange-50 transition-colors"
-              >
-                Save for Later
-              </button>
-              <button
-                onClick={() => {
-                  // TODO: Implement request sample action
-                  console.log("Request sample:", { productTitle, referenceImages, dimensions, customDimensions, notes });
-                  setShowFinalizeModal(false);
-                }}
-                className="px-6 py-3 text-sm font-medium bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-              >
-                Request Sample
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <FinalizeModal
+        open={showFinalizeModal}
+        onClose={() => setShowFinalizeModal(false)}
+        productTitle={productTitle}
+        setProductTitle={setProductTitle}
+        isGeneratingTitle={isGeneratingTitle}
+        referenceImages={referenceImages}
+        setReferenceImages={setReferenceImages}
+        customizations={customizations}
+        setCustomizations={setCustomizations}
+        isGeneratingCustomizations={isGeneratingCustomizations}
+        dimensions={dimensions}
+        setDimensions={setDimensions}
+        customDimensions={customDimensions}
+        setCustomDimensions={setCustomDimensions}
+        notes={notes}
+        setNotes={setNotes}
+        onSaveForLater={() => setShowFinalizeModal(false)}
+        onRequestSample={() => {
+          // TODO: Implement request sample action
+          console.log("Request sample:", {
+            productTitle,
+            referenceImages,
+            dimensions,
+            customDimensions,
+            notes,
+          });
+        }}
+      />
     </div>
   );
 }

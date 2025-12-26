@@ -91,6 +91,6 @@ export async function loadSecrets() {
   console.log(
     `\n✓ Welcome ${
       email || "developer"
-    }. You are working on the Terra OMS. Happy coding :)`
+    }. You are working on the Terraform platform. Happy coding :)`
   );
 }

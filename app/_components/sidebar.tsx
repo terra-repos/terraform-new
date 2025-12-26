@@ -8,18 +8,21 @@ import {
   Clock,
   LayoutDashboard,
   LineChart,
+  LogOut,
   Menu,
   Package,
   PanelLeftOpen,
   PanelRightOpen,
   Palette,
-  Settings,
   ShoppingCart,
   Store,
   Truck,
+  User,
   X,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 type NavItem = { label: string; icon: React.ElementType; href?: string };
 
@@ -107,18 +110,119 @@ function TooltipButton({
   );
 }
 
+// User popup component
+function UserPopup({
+  isOpen,
+  onClose,
+  position,
+  onSignOut,
+  onProfilePage,
+  triggerRef,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  position: "above" | "below";
+  onSignOut?: () => void;
+  onProfilePage?: () => void;
+  triggerRef?: React.RefObject<HTMLDivElement | null>;
+}) {
+  const popupRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const isOutsidePopup =
+        popupRef.current && !popupRef.current.contains(target);
+      const isOutsideTrigger =
+        !triggerRef?.current || !triggerRef.current.contains(target);
+
+      if (isOutsidePopup && isOutsideTrigger) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen, onClose, triggerRef]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      ref={popupRef}
+      className={`absolute left-0 right-0 z-50 mx-2 rounded-xl bg-white border border-slate-200 shadow-lg overflow-hidden ${
+        position === "above" ? "bottom-full mb-2" : "top-full mt-2"
+      }`}
+    >
+      <button
+        onClick={() => {
+          onProfilePage?.();
+          onClose();
+        }}
+        className="flex w-full items-center gap-3 px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50"
+      >
+        <User className="h-4 w-4" />
+        <span>Profile Page</span>
+      </button>
+      <div className="border-t border-slate-100" />
+      <button
+        onClick={() => {
+          onSignOut?.();
+          onClose();
+        }}
+        className="flex w-full items-center gap-3 px-4 py-3 text-sm text-red-600 transition hover:bg-red-50"
+      >
+        <LogOut className="h-4 w-4" />
+        <span>Sign Out</span>
+      </button>
+    </div>
+  );
+}
+
 type SidebarProps = {
   isOpen?: boolean;
   onToggle?: () => void;
+  onProfilePage?: () => void;
+  user?: {
+    firstName: string | null;
+    lastName: string | null;
+    pfpSrc: string | null;
+  } | null;
 };
 
-export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
+export default function Sidebar({
+  isOpen = true,
+  onToggle,
+  onProfilePage,
+  user,
+}: SidebarProps) {
   const [expandedSections, setExpandedSections] = useState<string[]>([
     "Designs",
     "Store",
     "Samples",
   ]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userPopupOpen, setUserPopupOpen] = useState(false);
+  const [mobileUserPopupOpen, setMobileUserPopupOpen] = useState(false);
+  const userTriggerRef = useRef<HTMLDivElement>(null);
+  const mobileUserTriggerRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  const fullName = user
+    ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || "User"
+    : "User";
+  const initials = user
+    ? `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase() ||
+      "U"
+    : "U";
+
+  const handleSignOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/");
+  };
 
   const toggleSection = (label: string) => {
     setExpandedSections((prev) =>
@@ -129,7 +233,11 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
   // Close mobile menu on escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMobileMenuOpen(false);
+      if (e.key === "Escape") {
+        setMobileMenuOpen(false);
+        setUserPopupOpen(false);
+        setMobileUserPopupOpen(false);
+      }
     };
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
@@ -199,7 +307,6 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
   return (
     <>
       {/* Mobile Header Bar */}
-      {/* Mobile Header Bar */}
       <div className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4 md:hidden">
         <button
           onClick={() => setMobileMenuOpen(true)}
@@ -253,26 +360,45 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
             </div>
 
             {/* Footer */}
-            <div className="border-t border-slate-100 p-3">
+            <div className="relative border-t border-slate-100 p-3">
               <div
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 cursor-pointer"
+                ref={mobileUserTriggerRef}
+                onClick={() => setMobileUserPopupOpen(!mobileUserPopupOpen)}
+                className="flex items-center gap-3 rounded-xl px-3 py-2 cursor-pointer transition hover:bg-slate-50"
               >
-                <Settings className="h-4 w-4 shrink-0" />
-                <span>Settings</span>
+                {user?.pfpSrc ? (
+                  <Image
+                    src={user.pfpSrc}
+                    alt={fullName}
+                    width={36}
+                    height={36}
+                    className="h-9 w-9 shrink-0 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-500 text-sm font-semibold text-white">
+                    {initials}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-900">
+                    {fullName}
+                  </p>
+                </div>
+                <ChevronDown
+                  className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${
+                    mobileUserPopupOpen ? "rotate-180" : ""
+                  }`}
+                />
               </div>
 
-              <div className="flex items-center gap-3 rounded-xl px-3 py-2 cursor-pointer transition hover:bg-slate-50">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-500 text-sm font-semibold text-white">
-                  GG
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-slate-900">
-                    Geoffrey Guindine
-                  </p>
-                  <p className="text-xs text-slate-500">Pro Plan</p>
-                </div>
-              </div>
+              <UserPopup
+                isOpen={mobileUserPopupOpen}
+                onClose={() => setMobileUserPopupOpen(false)}
+                position="above"
+                onSignOut={handleSignOut}
+                onProfilePage={onProfilePage}
+                triggerRef={mobileUserTriggerRef}
+              />
             </div>
           </div>
         </div>
@@ -356,46 +482,71 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
 
         {/* Profile section - fixed at bottom */}
         <div
-          className={`shrink-0 border-t border-slate-100 pt-3 ${
+          className={`relative shrink-0 border-t border-slate-100 pt-3 ${
             isOpen ? "" : "flex flex-col items-center"
           }`}
         >
-          {/* Settings */}
-          {isOpen ? (
-            <div className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 cursor-pointer">
-              <Settings className="h-4 w-4 shrink-0" />
-              <span>Settings</span>
-            </div>
-          ) : (
-            <TooltipButton
-              label="Settings"
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
-            >
-              <Settings className="h-5 w-5" />
-            </TooltipButton>
-          )}
-
           {/* User avatar */}
           {isOpen ? (
-            <div className="flex items-center gap-3 rounded-xl px-3 py-2 cursor-pointer transition hover:bg-slate-50">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-500 text-sm font-semibold text-white">
-                GG
+            <>
+              <div
+                ref={userTriggerRef}
+                onClick={() => setUserPopupOpen(!userPopupOpen)}
+                className="flex items-center gap-3 rounded-xl px-3 py-2 cursor-pointer transition hover:bg-slate-50"
+              >
+                {user?.pfpSrc ? (
+                  <Image
+                    src={user.pfpSrc}
+                    alt={fullName}
+                    width={36}
+                    height={36}
+                    className="h-9 w-9 shrink-0 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-500 text-sm font-semibold text-white">
+                    {initials}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-900">
+                    {fullName}
+                  </p>
+                </div>
+                <ChevronDown
+                  className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${
+                    userPopupOpen ? "rotate-180" : ""
+                  }`}
+                />
               </div>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-slate-900">
-                  Geoffrey Guindine
-                </p>
-                <p className="text-xs text-slate-500">Pro Plan</p>
-              </div>
-            </div>
+
+              <UserPopup
+                isOpen={userPopupOpen}
+                onClose={() => setUserPopupOpen(false)}
+                position="above"
+                onSignOut={handleSignOut}
+                onProfilePage={onProfilePage}
+                triggerRef={userTriggerRef}
+              />
+            </>
           ) : (
             <TooltipButton
-              label="Geoffrey Guindine"
+              label={fullName}
+              onClick={() => setUserPopupOpen(!userPopupOpen)}
               className="mt-1 flex h-10 w-10 items-center justify-center rounded-xl transition hover:bg-slate-50"
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-500 text-sm font-semibold text-white">
-                GG
-              </div>
+              {user?.pfpSrc ? (
+                <Image
+                  src={user.pfpSrc}
+                  alt={fullName}
+                  width={36}
+                  height={36}
+                  className="h-9 w-9 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-500 text-sm font-semibold text-white">
+                  {initials}
+                </div>
+              )}
             </TooltipButton>
           )}
         </div>
