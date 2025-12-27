@@ -13,9 +13,16 @@ export type UserData = {
 type LayoutShellProps = {
   children: ReactNode;
   user: UserData;
+  cartCount?: number;
+  hasSampleOrders?: boolean;
 };
 
-export default function LayoutShell({ children, user }: LayoutShellProps) {
+export default function LayoutShell({
+  children,
+  user,
+  cartCount = 0,
+  hasSampleOrders = false,
+}: LayoutShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
@@ -30,6 +37,8 @@ export default function LayoutShell({ children, user }: LayoutShellProps) {
           isOpen={sidebarOpen}
           onToggle={() => setSidebarOpen((v) => !v)}
           user={user}
+          cartCount={cartCount}
+          hasSampleOrders={hasSampleOrders}
         />
         <main className="relative flex flex-1 bg-[#FAFAFA]">
           <div className="flex flex-1 items-center justify-center w-full ">

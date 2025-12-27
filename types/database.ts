@@ -4568,34 +4568,34 @@ export type Database = {
           created_at: string
           design_id: string | null
           id: string
-          product_id: string
+          product_id: string | null
           quantity: number
           source: string | null
           updated_at: string
           user_id: string
-          variant_id: string
+          variant_id: string | null
         }
         Insert: {
           created_at?: string
           design_id?: string | null
           id?: string
-          product_id: string
+          product_id?: string | null
           quantity: number
           source?: string | null
           updated_at?: string
           user_id?: string
-          variant_id: string
+          variant_id?: string | null
         }
         Update: {
           created_at?: string
           design_id?: string | null
           id?: string
-          product_id?: string
+          product_id?: string | null
           quantity?: number
           source?: string | null
           updated_at?: string
           user_id?: string
-          variant_id?: string
+          variant_id?: string | null
         }
         Relationships: [
           {

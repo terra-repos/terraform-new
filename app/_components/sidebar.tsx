@@ -2,59 +2,54 @@
 
 import Image from "next/image";
 import {
-  Box,
-  CheckCircle,
   ChevronDown,
-  Clock,
-  LayoutDashboard,
-  LineChart,
+  Lock,
   LogOut,
   Menu,
   Package,
   PanelLeftOpen,
   PanelRightOpen,
   Palette,
-  ShoppingCart,
+  ShoppingBag,
   Store,
-  Truck,
   User,
   X,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
 
-type NavItem = { label: string; icon: React.ElementType; href?: string };
-
-type NavSection = {
+type NavItem = {
   label: string;
   icon: React.ElementType;
-  items: NavItem[];
+  href: string;
+  locked: boolean;
+  lockedTooltip?: string;
 };
 
-const navSections: NavSection[] = [
+const getNavItems = (hasSampleOrders: boolean): NavItem[] => [
   {
-    label: "Designs",
+    label: "Design",
     icon: Palette,
-    items: [
-      { label: "In Progress", icon: Clock },
-      { label: "Finalized", icon: CheckCircle },
-    ],
+    href: "/design",
+    locked: false, // Always unlocked
+  },
+  {
+    label: "Sample Orders",
+    icon: Package,
+    href: "/sample-orders",
+    locked: !hasSampleOrders, // Unlocked when user has submitted sample orders
+    lockedTooltip:
+      "Once you request a sample, you will be able to view your samples.",
   },
   {
     label: "Store",
     icon: Store,
-    items: [
-      { label: "Store Design", icon: LayoutDashboard },
-      { label: "Products", icon: Box },
-      { label: "Orders", icon: ShoppingCart },
-      { label: "Analytics", icon: LineChart },
-    ],
-  },
-  {
-    label: "Samples",
-    icon: Package,
-    items: [{ label: "Orders", icon: Truck }],
+    href: "/store",
+    locked: true,
+    lockedTooltip:
+      "Once a sample is finalized, you will be able to create your store.",
   },
 ];
 
@@ -190,6 +185,8 @@ type SidebarProps = {
     lastName: string | null;
     pfpSrc: string | null;
   } | null;
+  cartCount?: number;
+  hasSampleOrders?: boolean;
 };
 
 export default function Sidebar({
@@ -197,18 +194,17 @@ export default function Sidebar({
   onToggle,
   onProfilePage,
   user,
+  cartCount = 0,
+  hasSampleOrders = false,
 }: SidebarProps) {
-  const [expandedSections, setExpandedSections] = useState<string[]>([
-    "Designs",
-    "Store",
-    "Samples",
-  ]);
+  const navItems = getNavItems(hasSampleOrders);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userPopupOpen, setUserPopupOpen] = useState(false);
   const [mobileUserPopupOpen, setMobileUserPopupOpen] = useState(false);
   const userTriggerRef = useRef<HTMLDivElement>(null);
   const mobileUserTriggerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const pathname = usePathname();
 
   const fullName = user
     ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || "User"
@@ -222,12 +218,6 @@ export default function Sidebar({
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push("/");
-  };
-
-  const toggleSection = (label: string) => {
-    setExpandedSections((prev) =>
-      prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]
-    );
   };
 
   // Close mobile menu on escape key
@@ -258,47 +248,80 @@ export default function Sidebar({
   // Shared nav content for both mobile and desktop
   const NavContent = ({ isMobile = false }: { isMobile?: boolean }) => (
     <>
-      {navSections.map((section) => {
-        const isExpanded = expandedSections.includes(section.label);
-        const SectionIcon = section.icon;
+      {/* My Samples standalone link with separator */}
+      <Link
+        href="/samples"
+        onClick={() => isMobile && setMobileMenuOpen(false)}
+        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+          pathname === "/samples"
+            ? "bg-orange-50 text-orange-600"
+            : "text-slate-900 hover:bg-slate-100"
+        }`}
+      >
+        <div className="relative">
+          <ShoppingBag
+            className={`h-5 w-5 shrink-0 ${
+              pathname === "/samples" ? "text-orange-500" : "text-slate-500"
+            }`}
+          />
+          {cartCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[10px] font-semibold text-white">
+              {cartCount > 9 ? "9+" : cartCount}
+            </span>
+          )}
+        </div>
+        <span className="flex-1">My Samples</span>
+        {cartCount > 0 && (
+          <span className="text-xs text-slate-400">{cartCount}</span>
+        )}
+      </Link>
+
+      {/* Separator */}
+      <div className="my-3 border-t border-slate-200" />
+
+      {/* Nav items */}
+      {navItems.map((item: NavItem) => {
+        const ItemIcon = item.icon;
+        const isActive =
+          pathname === item.href || pathname.startsWith(item.href + "/");
+
+        if (item.locked) {
+          return (
+            <div key={item.label} className="relative group mb-1">
+              <div className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 cursor-not-allowed">
+                <ItemIcon className="h-5 w-5 shrink-0 text-slate-300" />
+                <span className="flex-1">{item.label}</span>
+                <Lock className="h-4 w-4 text-slate-300" />
+              </div>
+              {item.lockedTooltip && (
+                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 hidden group-hover:block">
+                  <div className="whitespace-nowrap max-w-xs text-wrap rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white shadow-lg">
+                    {item.lockedTooltip}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        }
 
         return (
-          <div key={section.label} className="mb-2">
-            <button
-              onClick={() => toggleSection(section.label)}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-900 transition hover:bg-slate-100"
-            >
-              <SectionIcon className="h-5 w-5 shrink-0 text-slate-500" />
-              <span className="flex-1 text-left">{section.label}</span>
-              <ChevronDown
-                className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${
-                  isExpanded ? "" : "-rotate-90"
-                }`}
-              />
-            </button>
-
-            <div
-              className={`overflow-hidden transition-all duration-200 ${
-                isExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+          <Link
+            key={item.label}
+            href={item.href}
+            onClick={() => isMobile && setMobileMenuOpen(false)}
+            className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition mb-1 ${
+              isActive
+                ? "bg-orange-50 text-orange-600"
+                : "text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            <ItemIcon
+              className={`h-5 w-5 shrink-0 ${
+                isActive ? "text-orange-500" : "text-slate-500"
               }`}
-            >
-              <div className="ml-4 border-l border-slate-100 pl-2">
-                {section.items.map((item) => {
-                  const ItemIcon = item.icon;
-                  return (
-                    <div
-                      key={item.label}
-                      onClick={() => isMobile && setMobileMenuOpen(false)}
-                      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 cursor-pointer"
-                    >
-                      <ItemIcon className="h-4 w-4 shrink-0" />
-                      <span>{item.label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+            />
+            <span className="flex-1">{item.label}</span>
+          </Link>
         );
       })}
     </>
@@ -462,18 +485,63 @@ export default function Sidebar({
           {isOpen ? (
             <NavContent />
           ) : (
-            // Collapsed view - main section icons only with tooltips
+            // Collapsed view - icons only with tooltips
             <div className="flex flex-col items-center gap-1">
-              {navSections.map((section) => {
-                const SectionIcon = section.icon;
+              {/* My Samples icon in collapsed view */}
+              <Link href="/samples" className="relative">
+                <TooltipButton
+                  label={`My Samples${cartCount > 0 ? ` (${cartCount})` : ""}`}
+                  className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${
+                    pathname === "/samples"
+                      ? "bg-orange-50 text-orange-600"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  }`}
+                >
+                  <ShoppingBag className="h-5 w-5" />
+                </TooltipButton>
+                {cartCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[10px] font-semibold text-white">
+                    {cartCount > 9 ? "9+" : cartCount}
+                  </span>
+                )}
+              </Link>
+
+              {/* Separator */}
+              <div className="my-2 w-8 border-t border-slate-200" />
+
+              {/* Nav items */}
+              {navItems.map((item: NavItem) => {
+                const ItemIcon = item.icon;
+                const isActive =
+                  pathname === item.href ||
+                  pathname.startsWith(item.href + "/");
+
+                if (item.locked) {
+                  return (
+                    <TooltipButton
+                      key={item.label}
+                      label={item.lockedTooltip || `${item.label} (Locked)`}
+                      className="relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-300 cursor-not-allowed"
+                    >
+                      <ItemIcon className="h-5 w-5" />
+                      <Lock className="absolute -top-0.5 -right-0.5 h-3 w-3 text-slate-400" />
+                    </TooltipButton>
+                  );
+                }
+
                 return (
-                  <TooltipButton
-                    key={section.label}
-                    label={section.label}
-                    className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
-                  >
-                    <SectionIcon className="h-5 w-5" />
-                  </TooltipButton>
+                  <Link key={item.label} href={item.href}>
+                    <TooltipButton
+                      label={item.label}
+                      className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${
+                        isActive
+                          ? "bg-orange-50 text-orange-600"
+                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                      }`}
+                    >
+                      <ItemIcon className="h-5 w-5" />
+                    </TooltipButton>
+                  </Link>
                 );
               })}
             </div>

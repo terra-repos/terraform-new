@@ -104,3 +104,12 @@
     opacity: 1;
   }
 }
+
+#nprogress .bar {
+  background: #f97316 !important;
+  height: 3px;
+}
+
+#nprogress .peg {
+  box-shadow: 0 0 10px #f97316, 0 0 5px #f97316 !important;
+}

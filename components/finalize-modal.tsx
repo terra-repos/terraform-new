@@ -29,8 +29,20 @@ type FinalizeModalProps = {
   setCustomDimensions: Dispatch<SetStateAction<CustomDimension[]>>;
   notes: string;
   setNotes: Dispatch<SetStateAction<string>>;
+  messages: unknown[];
+  imageUrl: string;
   onSaveForLater?: () => void;
-  onRequestSample?: () => void;
+  onRequestSample?: (data: {
+    productTitle: string;
+    referenceImages: string[];
+    customizations: string[];
+    dimensions: Dimensions;
+    customDimensions: CustomDimension[];
+    notes: string;
+    messages: unknown[];
+    imageUrl: string;
+  }) => Promise<void>;
+  isSubmitting?: boolean;
 };
 
 export default function FinalizeModal({
@@ -50,12 +62,16 @@ export default function FinalizeModal({
   setCustomDimensions,
   notes,
   setNotes,
+  messages,
+  imageUrl,
   onSaveForLater,
   onRequestSample,
+  isSubmitting = false,
 }: FinalizeModalProps) {
   if (!open) return null;
 
   const isGenerating = isGeneratingTitle || isGeneratingCustomizations;
+  const isDisabled = isGenerating || isSubmitting;
 
   return (
     <div
@@ -314,17 +330,30 @@ export default function FinalizeModal({
           </button>
           <button
             onClick={() => {
-              onRequestSample?.();
-              onClose();
+              onRequestSample?.({
+                productTitle,
+                referenceImages,
+                customizations,
+                dimensions,
+                customDimensions,
+                notes,
+                messages,
+                imageUrl,
+              });
             }}
-            disabled={isGenerating}
+            disabled={isDisabled}
             className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
-              isGenerating
+              isDisabled
                 ? "bg-orange-300 text-white cursor-not-allowed"
                 : "bg-orange-500 text-white hover:bg-orange-600"
             }`}
           >
-            {isGenerating ? (
+            {isSubmitting ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Submitting...
+              </span>
+            ) : isGenerating ? (
               <span className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Generating...
