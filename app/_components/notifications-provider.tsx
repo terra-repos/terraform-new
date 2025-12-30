@@ -207,7 +207,13 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
                 }
 
                 const notification = { ...rawRow, sender_pfp_src };
-                setNotifications((prev) => [notification, ...prev]);
+                // Dedupe inside setState to prevent race conditions
+                setNotifications((prev) => {
+                  if (prev.some((n) => n.id === rawRow.id)) {
+                    return prev;
+                  }
+                  return [notification, ...prev];
+                });
                 playChime();
                 setBanner({ notification, visible: true });
               }

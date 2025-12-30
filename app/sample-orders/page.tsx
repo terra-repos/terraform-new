@@ -5,6 +5,7 @@ import SampleOrdersList from "./sample-orders-list";
 export type SampleOrderItem = {
   id: string;
   status: string;
+  display_status: string;
   quantity: number;
   created_at: string;
   product_title: string;
@@ -21,6 +22,79 @@ export type SampleOrder = {
   created_at: string;
   items: SampleOrderItem[];
 };
+
+type SampleManufacturer = {
+  order_item_id: string;
+  status: string | null;
+  arrived_at_forwarder: boolean | null;
+};
+
+// Compute display status from sample manufacturers (same logic as item detail page)
+function getDisplayStatus(
+  manufacturers: SampleManufacturer[],
+  orderItemStatus: string
+): string {
+  // shipped and delivered come from order_items.status only
+  if (orderItemStatus === "shipped") {
+    return "shipped";
+  }
+  if (orderItemStatus === "delivered") {
+    return "delivered";
+  }
+
+  // No sample_manufacturers = draft
+  if (manufacturers.length === 0) {
+    return "draft";
+  }
+
+  // Check for arrived_at_forwarder flag or shipped status in sample_manufacturers
+  let hasArrivedAtForwarder = false;
+  let hasShippedManufacturer = false;
+  let hasInProduction = false;
+  let hasApproved = false;
+
+  for (const m of manufacturers) {
+    const status = m.status || "draft";
+    // Skip cancelled and on_hold statuses
+    if (status === "cancelled" || status === "on_hold") continue;
+
+    if (m.arrived_at_forwarder === true) {
+      hasArrivedAtForwarder = true;
+    }
+    if (status === "shipped") {
+      hasShippedManufacturer = true;
+    }
+    if (status === "in_production") {
+      hasInProduction = true;
+    }
+    if (status === "approved") {
+      hasApproved = true;
+    }
+  }
+
+  // If sample_manufacturer status is "shipped" but arrived_at_forwarder is not set, show as completed
+  if (hasShippedManufacturer && !hasArrivedAtForwarder) {
+    return "completed";
+  }
+
+  // If any manufacturer has arrived_at_forwarder flag, show as ready_to_ship
+  if (hasArrivedAtForwarder) {
+    return "ready_to_ship";
+  }
+
+  // If any manufacturer is in_production
+  if (hasInProduction) {
+    return "in_production";
+  }
+
+  // If any manufacturer is approved
+  if (hasApproved) {
+    return "approved";
+  }
+
+  // Default to draft if we have manufacturers but none match the above
+  return "draft";
+}
 
 async function getSampleOrderData(): Promise<{
   items: SampleOrderItem[];
@@ -86,6 +160,23 @@ async function getSampleOrderData(): Promise<{
     return { items: [], orders: [] };
   }
 
+  // Get all order item IDs to fetch their sample_manufacturers
+  const orderItemIds = (orderItems || []).map((item) => item.id);
+
+  // Fetch sample_manufacturers for all order items
+  const { data: sampleManufacturers } = await supabase
+    .from("sample_manufacturers")
+    .select("order_item_id, status, arrived_at_forwarder")
+    .in("order_item_id", orderItemIds);
+
+  // Group sample_manufacturers by order_item_id
+  const manufacturersByItem = new Map<string, SampleManufacturer[]>();
+  for (const sm of sampleManufacturers || []) {
+    const existing = manufacturersByItem.get(sm.order_item_id) || [];
+    existing.push(sm);
+    manufacturersByItem.set(sm.order_item_id, existing);
+  }
+
   // Transform to item structure
   const items: SampleOrderItem[] = (orderItems || []).map((item) => {
     const order = item.orders as unknown as {
@@ -106,9 +197,17 @@ async function getSampleOrderData(): Promise<{
     const productImage =
       variant.images?.[0]?.src || product.thumbnail_image || null;
 
+    // Get sample_manufacturers for this item and compute display_status
+    const itemManufacturers = manufacturersByItem.get(item.id) || [];
+    const displayStatus = getDisplayStatus(
+      itemManufacturers,
+      item.status as string
+    );
+
     return {
       id: item.id,
       status: item.status as string,
+      display_status: displayStatus,
       quantity: item.quantity,
       created_at: item.created_at || new Date().toISOString(),
       product_title: product.title || variant.title || "Untitled",

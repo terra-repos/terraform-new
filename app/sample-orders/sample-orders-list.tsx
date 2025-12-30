@@ -43,7 +43,17 @@ const STATUS_STYLES: Record<string, { border: string; text: string }> = {
   draft: { border: "border-neutral-300", text: "text-neutral-500" },
   sourcing: { border: "border-yellow-400", text: "text-yellow-600" },
   quoted: { border: "border-yellow-400", text: "text-yellow-600" },
+  review: { border: "border-yellow-400", text: "text-yellow-600" },
+  pending: { border: "border-yellow-400", text: "text-yellow-600" },
+  approved: { border: "border-emerald-400", text: "text-emerald-600" },
+  invoiced: { border: "border-purple-400", text: "text-purple-600" },
+  paid: { border: "border-purple-400", text: "text-purple-600" },
+  submitted: { border: "border-blue-400", text: "text-blue-600" },
+  confirmed: { border: "border-blue-400", text: "text-blue-600" },
   in_production: { border: "border-orange-400", text: "text-orange-600" },
+  ready_to_ship: { border: "border-indigo-400", text: "text-indigo-600" },
+  shipped: { border: "border-cyan-400", text: "text-cyan-600" },
+  delivered: { border: "border-teal-400", text: "text-teal-600" },
   completed: { border: "border-green-400", text: "text-green-600" },
   issue: { border: "border-red-400", text: "text-red-600" },
   cancelled: { border: "border-slate-300", text: "text-slate-500" },
@@ -97,13 +107,13 @@ export default function SampleOrdersList({
       ) {
         return false;
       }
-      if (statusFilter !== "all" && item.status !== statusFilter) {
+      if (statusFilter !== "all" && item.display_status !== statusFilter) {
         return false;
       }
-      if (hideCompleted && item.status === "completed") {
+      if (hideCompleted && item.display_status === "completed") {
         return false;
       }
-      if (hideCancelled && item.status === "cancelled") {
+      if (hideCancelled && item.display_status === "cancelled") {
         return false;
       }
       return true;
@@ -155,7 +165,7 @@ export default function SampleOrdersList({
       // Check if any item matches status filter
       if (statusFilter !== "all") {
         const hasMatchingStatus = order.items.some(
-          (item) => item.status === statusFilter
+          (item) => item.display_status === statusFilter
         );
         if (!hasMatchingStatus) return false;
       }
@@ -163,14 +173,14 @@ export default function SampleOrdersList({
       // Hide completed/cancelled orders (if all items are completed/cancelled)
       if (hideCompleted) {
         const allCompleted = order.items.every(
-          (item) => item.status === "completed"
+          (item) => item.display_status === "completed"
         );
         if (allCompleted) return false;
       }
 
       if (hideCancelled) {
         const allCancelled = order.items.every(
-          (item) => item.status === "cancelled"
+          (item) => item.display_status === "cancelled"
         );
         if (allCancelled) return false;
       }
@@ -411,7 +421,7 @@ export default function SampleOrdersList({
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredItems.map((item) => {
-                  const statusStyle = getStatusStyle(item.status);
+                  const statusStyle = getStatusStyle(item.display_status);
 
                   return (
                     <Link
@@ -446,7 +456,7 @@ export default function SampleOrdersList({
                         <span
                           className={`inline-block px-3 py-1 text-xs font-medium rounded-full border ${statusStyle.border} ${statusStyle.text}`}
                         >
-                          {formatStatus(item.status)}
+                          {formatStatus(item.display_status)}
                         </span>
                       </div>
                     </Link>
@@ -501,7 +511,7 @@ export default function SampleOrdersList({
                     {/* Order Items */}
                     <div className="divide-y divide-neutral-100">
                       {order.items.map((item) => {
-                        const statusStyle = getStatusStyle(item.status);
+                        const statusStyle = getStatusStyle(item.display_status);
 
                         return (
                           <Link
@@ -540,7 +550,7 @@ export default function SampleOrdersList({
                             <span
                               className={`px-3 py-1 text-xs font-medium rounded-full border ${statusStyle.border} ${statusStyle.text}`}
                             >
-                              {formatStatus(item.status)}
+                              {formatStatus(item.display_status)}
                             </span>
                           </Link>
                         );

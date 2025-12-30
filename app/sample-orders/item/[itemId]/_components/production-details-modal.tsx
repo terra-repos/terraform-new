@@ -24,18 +24,31 @@ export default function ProductionDetailsModal({
 }: ProductionDetailsModalProps) {
   if (!open) return null;
 
+  // Sample Cost: same as before (variant price)
   const sampleCost = item.price;
-  const productionQuote = item.factory_price;
-  const shippingEstimate = item.air_shipping_cost || item.ocean_shipping_cost;
 
-  // Calculate derived values only if we have the necessary data
+  // Production Quote: product_variants.price
+  const productionQuote = item.price;
+
+  // Shipping Estimate: ocean_shipping_cost only
+  const shippingEstimate = item.ocean_shipping_cost;
+
+  // Our Margin: distance between price and cost_price (factory_price)
   const margin =
-    sampleCost && productionQuote ? sampleCost - productionQuote : null;
-  const basePrice =
-    productionQuote && margin && shippingEstimate
-      ? productionQuote + margin + shippingEstimate
+    productionQuote && productionQuote > 0 && item.factory_price && item.factory_price > 0
+      ? productionQuote - item.factory_price
       : null;
-  const suggestedRetail = basePrice ? basePrice * 1.3 : null; // 30% markup
+
+  // Base Price Estimate: price + ocean_shipping_cost
+  const basePrice =
+    productionQuote && productionQuote > 0 && shippingEstimate && shippingEstimate > 0
+      ? productionQuote + shippingEstimate
+      : null;
+
+  // Suggested Retail: Base * 1.3
+  const suggestedRetail = basePrice ? basePrice * 1.3 : null;
+
+  // Profit per Sale: Retail - Base
   const profitPerSale = suggestedRetail && basePrice ? suggestedRetail - basePrice : null;
 
   const hasPricing = sampleCost && sampleCost > 0;
@@ -136,7 +149,7 @@ export default function ProductionDetailsModal({
                       {key}:
                     </span>
                     <span className="ml-1 font-medium text-neutral-900">
-                      {value}"
+                      {typeof value === "object" ? JSON.stringify(value) : value}"
                     </span>
                   </div>
                 ))}
@@ -178,7 +191,11 @@ export default function ProductionDetailsModal({
             <div>
               <p className="text-sm text-neutral-500 mb-2">(Note)</p>
               <p className="text-sm text-neutral-700">
-                {item.notes || "No notes provided"}
+                {item.notes
+                  ? typeof item.notes === "object" && item.notes !== null
+                    ? (item.notes as { note?: string }).note || JSON.stringify(item.notes)
+                    : item.notes
+                  : "No notes provided"}
               </p>
             </div>
           </div>

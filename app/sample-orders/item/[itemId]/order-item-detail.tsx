@@ -4,10 +4,10 @@ import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { OrderItemDetail as OrderItemDetailType } from "./page";
-import ImageGallery from "./components/image-gallery";
-import StatusSummary from "./components/status-summary";
-import ActionItems from "./components/action-items";
-import ProductionDetailsModal from "./components/production-details-modal";
+import ImageGallery from "./_components/image-gallery";
+import StatusSummary from "./_components/status-summary";
+import ActionItems from "./_components/action-items";
+import ProductionDetailsModal from "./_components/production-details-modal";
 
 const STATUS_STYLES: Record<
   string,
@@ -62,6 +62,11 @@ const STATUS_STYLES: Record<
     bg: "bg-orange-50",
     text: "text-orange-700",
     border: "border-orange-400",
+  },
+  ready_to_ship: {
+    bg: "bg-indigo-50",
+    text: "text-indigo-700",
+    border: "border-indigo-400",
   },
   partial_shipped: {
     bg: "bg-cyan-50",
@@ -169,6 +174,22 @@ export default function OrderItemDetail({ item }: OrderItemDetailProps) {
                 </div>
               </div>
             </div>
+
+            {/* Track button - shown when shipped */}
+            {item.display_status === "shipped" && (
+              <a
+                href={
+                  process.env.NODE_ENV === "development"
+                    ? `https://tracking-superstar.useterra.com/track/order/${item.order_id}`
+                    : `https://tracking.useterra.com/track/order/${item.order_id}`
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors"
+              >
+                Track
+              </a>
+            )}
           </div>
 
           {/* Progress bar */}
@@ -197,24 +218,33 @@ export default function OrderItemDetail({ item }: OrderItemDetailProps) {
                 <ImageGallery images={allImages} title={item.product_title} />
 
                 {/* Specifications */}
-                {item.important_details && item.important_details.length > 0 && (
-                  <div className="mt-6 pt-6 border-t border-neutral-100">
-                    <h3 className="text-sm font-medium text-neutral-900 mb-3">
-                      Specifications
-                    </h3>
-                    <ul className="space-y-2">
-                      {item.important_details.map((detail, index) => (
-                        <li
-                          key={index}
-                          className="text-sm text-neutral-600 flex items-start gap-2"
-                        >
-                          <span className="text-neutral-400">•</span>
-                          {detail}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                {item.important_details &&
+                  item.important_details.length > 0 && (
+                    <div className="mt-6 pt-6 border-t border-neutral-100">
+                      <h3 className="text-sm font-medium text-neutral-900 mb-3">
+                        Specifications
+                      </h3>
+                      <ul className="space-y-2">
+                        {item.important_details.map((detail, index) => {
+                          // Handle both string and {note: string} formats
+                          const detailText =
+                            typeof detail === "object" && detail !== null
+                              ? (detail as { note?: string }).note ||
+                                JSON.stringify(detail)
+                              : detail;
+                          return (
+                            <li
+                              key={index}
+                              className="text-sm text-neutral-600 flex items-start gap-2"
+                            >
+                              <span className="text-neutral-400">•</span>
+                              {detailText}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
 
                 {/* Notes */}
                 {item.notes && (
@@ -222,7 +252,12 @@ export default function OrderItemDetail({ item }: OrderItemDetailProps) {
                     <h3 className="text-sm font-medium text-neutral-900 mb-2">
                       Notes
                     </h3>
-                    <p className="text-sm text-neutral-600">{item.notes}</p>
+                    <p className="text-sm text-neutral-600">
+                      {typeof item.notes === "object" && item.notes !== null
+                        ? (item.notes as { note?: string }).note ||
+                          JSON.stringify(item.notes)
+                        : item.notes}
+                    </p>
                   </div>
                 )}
               </div>

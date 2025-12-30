@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
@@ -15,6 +15,7 @@ import {
 import type { ThreadWithMessages, MessageWithSender, OrderItemInfo } from "./page";
 import { sendMessage } from "@/app/actions/comm/send-message";
 import { uploadMultipleImages } from "@/app/actions/uploads/uploadImage";
+import { createClient } from "@/lib/supabase/client";
 
 type MessageOption = {
   id: string;
@@ -81,6 +82,60 @@ export default function CommunicationThread({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
+  // Supabase client for realtime subscriptions
+  const supabase = useMemo(() => createClient(), []);
+
+  // Fetch sender profile for a message
+  const fetchSenderProfile = useCallback(
+    async (senderId: string | null) => {
+      if (!senderId) return null;
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, first_name, last_name, email, pfp_src")
+        .eq("user_id", senderId)
+        .single();
+      return data;
+    },
+    [supabase]
+  );
+
+  // Subscribe to realtime messages for this thread
+  useEffect(() => {
+    if (!thread?.id) return;
+
+    const channel = supabase
+      .channel(`comm-messages-${thread.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "comm_messages",
+          filter: `thread_id=eq.${thread.id}`,
+        },
+        async (payload) => {
+          const newMessage = payload.new as MessageWithSender;
+
+          // Fetch sender profile
+          const sender = await fetchSenderProfile(newMessage.sender_id);
+
+          // Add message with sender info to state (dedupe inside setState)
+          setMessages((prev) => {
+            // Skip if we already have this message
+            if (prev.some((m) => m.id === newMessage.id)) {
+              return prev;
+            }
+            return [...prev, { ...newMessage, sender } as MessageWithSender];
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, thread?.id, fetchSenderProfile]);
+
   // Find pending options message (last unanswered options from admin)
   const pendingOptionsMessage = messages.find(
     (msg, index) =>
@@ -122,21 +177,28 @@ export default function CommunicationThread({
     if ((!textInput.trim() && uploadedImages.length === 0) || isSubmitting) return;
 
     setIsSubmitting(true);
+    const currentText = textInput.trim();
+    const currentImages = [...uploadedImages];
+
+    // Clear inputs immediately for better UX
+    setTextInput("");
+    setUploadedImages([]);
+
     try {
       const result = await sendMessage({
         orderItemId: itemId,
         threadId: thread?.id,
-        content: textInput.trim(),
+        content: currentText,
         messageType: "text",
-        metadata: uploadedImages.length > 0 ? { image_attachments: uploadedImages } : undefined,
+        metadata: currentImages.length > 0 ? { image_attachments: currentImages } : undefined,
       });
 
-      if (result.success && result.message) {
-        setMessages((prev) => [...prev, result.message as MessageWithSender]);
-        setTextInput("");
-        setUploadedImages([]);
-        router.refresh();
+      if (!result.success) {
+        // Restore inputs on failure
+        setTextInput(currentText);
+        setUploadedImages(currentImages);
       }
+      // Don't add message locally - let realtime subscription handle it
     } finally {
       setIsSubmitting(false);
     }
@@ -156,6 +218,11 @@ export default function CommunicationThread({
       .map((opt) => opt.label);
 
     setIsSubmitting(true);
+    const currentSelection = [...selectedOptions];
+
+    // Clear selection immediately
+    setSelectedOptions([]);
+
     try {
       const result = await sendMessage({
         orderItemId: itemId,
@@ -163,14 +230,14 @@ export default function CommunicationThread({
         content: selectedLabels.join(", "),
         messageType: "selection",
         parentId: optionsMessage.id,
-        metadata: { selectedOptions },
+        metadata: { selectedOptions: currentSelection },
       });
 
-      if (result.success && result.message) {
-        setMessages((prev) => [...prev, result.message as MessageWithSender]);
-        setSelectedOptions([]);
-        router.refresh();
+      if (!result.success) {
+        // Restore selection on failure
+        setSelectedOptions(currentSelection);
       }
+      // Don't add message locally - let realtime subscription handle it
     } finally {
       setIsSubmitting(false);
     }
@@ -382,43 +449,44 @@ export default function CommunicationThread({
   };
 
   return (
-    <div className="w-full min-h-screen bg-neutral-50 flex flex-col">
-      {/* Header - Pill Style */}
-      <div className="shrink-0 px-6 py-4">
-        <div className="max-w-3xl mx-auto">
-          <div className="flex items-center gap-4 bg-white rounded-2xl border border-neutral-200 px-4 py-3 shadow-sm">
-            <button
-              onClick={() => router.push(`/sample-orders/item/${orderItem.id}`)}
-              className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="h-5 w-5 text-neutral-600" />
-            </button>
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              {orderItem.product_thumbnail && (
-                <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-neutral-100">
-                  <Image
-                    src={orderItem.product_thumbnail}
-                    alt={orderItem.product_title}
-                    fill
-                    className="object-cover"
-                  />
+    <div className="flex h-full flex-col w-full overflow-hidden bg-neutral-50">
+      {/* Messages Area - scrolls past header */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Header - Pill Style */}
+        <div className="sticky top-0 z-10 px-6 py-4 bg-neutral-50">
+          <div className="max-w-3xl mx-auto">
+            <div className="flex items-center gap-4 bg-white rounded-2xl border border-neutral-200 px-4 py-3 shadow-sm">
+              <button
+                onClick={() => router.push(`/sample-orders/item/${orderItem.id}`)}
+                className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+              >
+                <ArrowLeft className="h-5 w-5 text-neutral-600" />
+              </button>
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                {orderItem.product_thumbnail && (
+                  <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-neutral-100">
+                    <Image
+                      src={orderItem.product_thumbnail}
+                      alt={orderItem.product_title}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <h1 className="text-lg font-semibold text-neutral-900 truncate">
+                    Messages
+                  </h1>
+                  <p className="text-sm text-neutral-500 truncate">
+                    {orderItem.product_title} · {orderItem.order_number}
+                  </p>
                 </div>
-              )}
-              <div className="min-w-0">
-                <h1 className="text-lg font-semibold text-neutral-900 truncate">
-                  Messages
-                </h1>
-                <p className="text-sm text-neutral-500 truncate">
-                  {orderItem.product_title} · {orderItem.order_number}
-                </p>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto">
+        {/* Messages */}
         <div className="max-w-3xl mx-auto px-6 py-6 space-y-4">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -439,9 +507,9 @@ export default function CommunicationThread({
         </div>
       </div>
 
-      {/* Input Area - Pill Style */}
-      <div className="shrink-0 px-6 py-4 pb-8">
-        <div className="max-w-3xl mx-auto">
+      {/* Input Area - Floating at bottom */}
+      <div className="pb-12 w-full">
+        <div className="max-w-3xl mx-auto px-6">
           {pendingOptionsMessage ? (
             // Show message when options selection is pending
             <div className="text-center py-2 bg-white rounded-3xl border border-neutral-200 shadow-sm px-6">
@@ -475,7 +543,7 @@ export default function CommunicationThread({
               )}
 
               {/* Input Row */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 {/* Upload Button */}
                 <input
                   ref={fileInputRef}

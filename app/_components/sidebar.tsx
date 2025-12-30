@@ -45,7 +45,7 @@ function timeAgo(iso?: string | null) {
   return `${days}d ago`;
 }
 
-const getNavItems = (hasSampleOrders: boolean): NavItem[] => [
+const getNavItems = (hasSampleOrders: boolean, hasDeliveredOrder: boolean): NavItem[] => [
   {
     label: "Design",
     icon: Palette,
@@ -64,9 +64,9 @@ const getNavItems = (hasSampleOrders: boolean): NavItem[] => [
     label: "Store",
     icon: Store,
     href: "/store",
-    locked: true,
+    locked: !hasDeliveredOrder, // Unlocked when user has a delivered order
     lockedTooltip:
-      "Once a sample is finalized, you will be able to create your store.",
+      "Once a sample is delivered, you will be able to create your store.",
   },
 ];
 
@@ -204,6 +204,7 @@ type SidebarProps = {
   } | null;
   cartCount?: number;
   hasSampleOrders?: boolean;
+  hasDeliveredOrder?: boolean;
 };
 
 export default function Sidebar({
@@ -213,8 +214,9 @@ export default function Sidebar({
   user,
   cartCount = 0,
   hasSampleOrders = false,
+  hasDeliveredOrder = false,
 }: SidebarProps) {
-  const navItems = getNavItems(hasSampleOrders);
+  const navItems = getNavItems(hasSampleOrders, hasDeliveredOrder);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userPopupOpen, setUserPopupOpen] = useState(false);
   const [mobileUserPopupOpen, setMobileUserPopupOpen] = useState(false);
@@ -277,7 +279,21 @@ export default function Sidebar({
   // Shared nav content for both mobile and desktop
   const NavContent = ({ isMobile = false }: { isMobile?: boolean }) => (
     <>
-      {/* My Samples standalone link with separator */}
+      {/* Notifications Button */}
+      <button
+        onClick={() => setNotificationsMode(true)}
+        className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-slate-900 hover:bg-slate-100"
+      >
+        <Bell className="h-5 w-5 shrink-0 text-slate-500" />
+        <span>Notifications</span>
+        {unreadCount > 0 && (
+          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-semibold text-white">
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {/* My Samples standalone link */}
       <Link
         href="/samples"
         onClick={() => isMobile && setMobileMenuOpen(false)}
@@ -353,28 +369,6 @@ export default function Sidebar({
           </Link>
         );
       })}
-
-      {/* Separator */}
-      <div className="my-3 border-t border-slate-200" />
-
-      {/* Notifications Button */}
-      <button
-        onClick={() => setNotificationsMode(true)}
-        className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition text-slate-900 hover:bg-slate-100"
-      >
-        <div className="relative">
-          <Bell className="h-5 w-5 shrink-0 text-slate-500" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold text-white">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
-          )}
-        </div>
-        <span className="flex-1">Notifications</span>
-        {unreadCount > 0 && (
-          <span className="text-xs text-slate-400">{unreadCount}</span>
-        )}
-      </button>
     </>
   );
 
@@ -553,13 +547,29 @@ export default function Sidebar({
               </button>
             </div>
 
-            {/* Nav Content */}
-            <div className="p-3 flex-1 overflow-y-auto">
-              {notificationsMode ? (
-                <NotificationsContent isMobile />
-              ) : (
+            {/* Nav Content with animated transitions */}
+            <div className="p-3 flex-1 overflow-hidden relative">
+              {/* Nav Content */}
+              <div
+                className={`h-full overflow-y-auto transition-all duration-300 ease-in-out ${
+                  notificationsMode
+                    ? "-translate-x-full opacity-0 absolute inset-0 p-3 pointer-events-none"
+                    : "translate-x-0 opacity-100"
+                }`}
+              >
                 <NavContent isMobile />
-              )}
+              </div>
+
+              {/* Notifications Content */}
+              <div
+                className={`h-full overflow-y-auto transition-all duration-300 ease-in-out ${
+                  notificationsMode
+                    ? "translate-x-0 opacity-100"
+                    : "translate-x-full opacity-0 absolute inset-0 p-3 pointer-events-none"
+                }`}
+              >
+                <NotificationsContent isMobile />
+              </div>
             </div>
 
             {/* Footer */}
@@ -661,12 +671,6 @@ export default function Sidebar({
               priority
             />
             <PanelRightOpen className="absolute h-5 w-5 text-slate-600 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
-            {/* Badge on expanded logo */}
-            {unreadCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </span>
-            )}
           </button>
 
           <span className="text-lg font-semibold text-slate-900">
@@ -677,9 +681,29 @@ export default function Sidebar({
           <div className="w-10" />
         </div>
 
-        {/* Scrollable content */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-          {notificationsMode ? <NotificationsContent /> : <NavContent />}
+        {/* Scrollable content with animated transitions */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden relative">
+          {/* Nav Content */}
+          <div
+            className={`flex-1 overflow-y-auto transition-all duration-300 ease-in-out ${
+              notificationsMode
+                ? "-translate-x-full opacity-0 absolute inset-0 pointer-events-none"
+                : "translate-x-0 opacity-100"
+            }`}
+          >
+            <NavContent />
+          </div>
+
+          {/* Notifications Content */}
+          <div
+            className={`flex-1 overflow-y-auto transition-all duration-300 ease-in-out ${
+              notificationsMode
+                ? "translate-x-0 opacity-100"
+                : "translate-x-full opacity-0 absolute inset-0 pointer-events-none"
+            }`}
+          >
+            <NotificationsContent />
+          </div>
         </div>
 
         {/* Profile section - fixed at bottom */}

@@ -77,16 +77,46 @@ async function getHasSampleOrders(): Promise<boolean> {
   return (count || 0) > 0;
 }
 
+async function getHasDeliveredOrder(): Promise<boolean> {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) return false;
+
+  // Get user's organization
+  const { data: orgMember } = await supabase
+    .from("organization_members")
+    .select("organization_id")
+    .eq("user_id", authUser.id)
+    .single();
+
+  if (!orgMember) return false;
+
+  // Check for any order_items with status "delivered" in terraform orders
+  const { count } = await supabase
+    .from("order_items")
+    .select("*, orders!inner(*)", { count: "exact", head: true })
+    .eq("orders.organization_id", orgMember.organization_id)
+    .eq("orders.order_source", "terraform")
+    .eq("status", "shipped");
+
+  return (count || 0) > 0;
+}
+
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: ReactNode;
 }>) {
-  const [user, cartCount, hasSampleOrders] = await Promise.all([
-    getUser(),
-    getCartCount(),
-    getHasSampleOrders(),
-  ]);
+  const [user, cartCount, hasSampleOrders, hasDeliveredOrder] =
+    await Promise.all([
+      getUser(),
+      getCartCount(),
+      getHasSampleOrders(),
+      getHasDeliveredOrder(),
+    ]);
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -95,6 +125,7 @@ export default async function RootLayout({
           user={user}
           cartCount={cartCount}
           hasSampleOrders={hasSampleOrders}
+          hasDeliveredOrder={hasDeliveredOrder}
         >
           <NavigationProgress />
           {children}

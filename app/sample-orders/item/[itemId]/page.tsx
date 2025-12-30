@@ -53,6 +53,7 @@ export type SampleManufacturer = {
   factory_id: string | null;
   sample_price: number | null;
   eta: string | null;
+  arrived_at_forwarder: boolean | null;
 };
 
 export type CommThreadAction = {
@@ -67,47 +68,70 @@ export type CommThreadAction = {
   } | null;
 };
 
-// Status ranking for determining "furthest along" status
-const STATUS_RANK: Record<string, number> = {
-  draft: 1,
-  sourcing: 2,
-  review: 3,
-  pending: 4,
-  approved: 5,
-  invoiced: 6,
-  paid: 7,
-  submitted: 8,
-  confirmed: 9,
-  in_production: 10,
-  partial_shipped: 11,
-  shipped: 12,
-  partial_delivery: 13,
-  delivered: 14,
-  completed: 15,
-};
-
 export function getFurthestStatus(
-  manufacturers: { status: string | null }[],
-  fallbackStatus: string
+  manufacturers: SampleManufacturer[],
+  orderItemStatus: string
 ): string {
-  if (manufacturers.length === 0) return fallbackStatus;
+  // shipped and delivered come from order_items.status only
+  if (orderItemStatus === "shipped") {
+    return "shipped";
+  }
+  if (orderItemStatus === "delivered") {
+    return "delivered";
+  }
 
-  let maxRank = 0;
-  let furthestStatus = fallbackStatus;
+  // No sample_manufacturers = draft
+  if (manufacturers.length === 0) {
+    return "draft";
+  }
+
+  // Check for arrived_at_forwarder flag or shipped status in sample_manufacturers
+  let hasArrivedAtForwarder = false;
+  let hasShippedManufacturer = false;
+  let hasInProduction = false;
+  let hasApproved = false;
 
   for (const m of manufacturers) {
     const status = m.status || "draft";
     // Skip cancelled and on_hold statuses
     if (status === "cancelled" || status === "on_hold") continue;
 
-    const rank = STATUS_RANK[status] || 0;
-    if (rank > maxRank) {
-      maxRank = rank;
-      furthestStatus = status;
+    if (m.arrived_at_forwarder === true) {
+      hasArrivedAtForwarder = true;
+    }
+    if (status === "shipped") {
+      hasShippedManufacturer = true;
+    }
+    if (status === "in_production") {
+      hasInProduction = true;
+    }
+    if (status === "approved") {
+      hasApproved = true;
     }
   }
 
-  return furthestStatus;
+  // If sample_manufacturer status is "shipped" but arrived_at_forwarder is not set, show as completed
+  if (hasShippedManufacturer && !hasArrivedAtForwarder) {
+    return "completed";
+  }
+
+  // If any manufacturer has arrived_at_forwarder flag, show as ready_to_ship
+  if (hasArrivedAtForwarder) {
+    return "ready_to_ship";
+  }
+
+  // If any manufacturer is in_production
+  if (hasInProduction) {
+    return "in_production";
+  }
+
+  // If any manufacturer is approved
+  if (hasApproved) {
+    return "approved";
+  }
+
+  // Default to draft if we have manufacturers but none match the above
+  return "draft";
 }
 
 export type OrderItemDetail = {
@@ -353,7 +377,7 @@ async function getOrderItemDetail(
   // Fetch sample manufacturers for this order item
   const { data: sampleManufacturers } = await supabase
     .from("sample_manufacturers")
-    .select("id, status, factory_id, sample_price, eta")
+    .select("id, status, factory_id, sample_price, eta, arrived_at_forwarder")
     .eq("order_item_id", itemId);
 
   // Transform sample manufacturers
@@ -362,6 +386,7 @@ async function getOrderItemDetail(
   ).map((sm) => ({
     id: sm.id,
     status: sm.status,
+    arrived_at_forwarder: sm.arrived_at_forwarder,
     factory_id: sm.factory_id,
     sample_price: sm.sample_price,
     eta: sm.eta,

@@ -117,7 +117,10 @@ export default function StatusSummary({
       description: event.event_description,
       created_at: event.created_at,
       actor_name: event.actor_name,
-      images: null,
+      // Convert attachments array of URLs to images array of {src: string}
+      images: event.attachments && event.attachments.length > 0
+        ? event.attachments.map((url) => ({ src: url }))
+        : null,
       tracking: null,
     })),
     ...visibleFactoryUpdates.map((update) => ({

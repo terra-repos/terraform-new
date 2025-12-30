@@ -11,11 +11,12 @@ export type UserData = {
   pfpSrc: string | null;
 } | null;
 
-type LayoutShellProps = {
+export type LayoutShellProps = {
   children: ReactNode;
   user: UserData;
   cartCount?: number;
   hasSampleOrders?: boolean;
+  hasDeliveredOrder?: boolean;
 };
 
 export default function LayoutShell({
@@ -23,6 +24,7 @@ export default function LayoutShell({
   user,
   cartCount = 0,
   hasSampleOrders = false,
+  hasDeliveredOrder = false,
 }: LayoutShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -41,6 +43,7 @@ export default function LayoutShell({
             user={user}
             cartCount={cartCount}
             hasSampleOrders={hasSampleOrders}
+            hasDeliveredOrder={hasDeliveredOrder}
           />
           <main className="relative flex-1 bg-[#FAFAFA] overflow-y-auto pt-14 md:pt-0">
             {children}

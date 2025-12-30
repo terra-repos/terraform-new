@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
+import { createServiceClient } from "@/lib/supabase/service";
 
 type CommMessageType = Database["public"]["Enums"]["comm_message_type"];
 type CommSenderType = Database["public"]["Enums"]["comm_sender_type"];
@@ -17,6 +18,7 @@ type SendMessageInput = {
 
 export async function sendMessage(input: SendMessageInput) {
   const supabase = await createClient();
+  const service = createServiceClient();
 
   const {
     data: { user },
@@ -30,7 +32,7 @@ export async function sendMessage(input: SendMessageInput) {
 
   // If no thread exists, create one
   if (!threadId) {
-    const { data: newThread, error: createError } = await supabase
+    const { data: newThread, error: createError } = await service
       .from("comm_threads")
       .insert({
         order_item_id: input.orderItemId,
@@ -47,7 +49,7 @@ export async function sendMessage(input: SendMessageInput) {
   }
 
   // Insert the message
-  const { data: message, error: messageError } = await supabase
+  const { data: message, error: messageError } = await service
     .from("comm_messages")
     .insert({
       thread_id: threadId,
@@ -77,14 +79,14 @@ export async function sendMessage(input: SendMessageInput) {
   }
 
   // Update thread status to awaiting_admin since client sent a message
-  await supabase
+  await service
     .from("comm_threads")
     .update({ status: "awaiting_admin", updated_at: new Date().toISOString() })
     .eq("id", threadId);
 
   // Send notifications to sourcing agent and supervisor
   try {
-    const { data: orderItem } = await supabase
+    const { data: orderItem } = await service
       .from("order_items")
       .select("sourcing_agent_id, supervisor_id")
       .eq("id", input.orderItemId)
@@ -96,12 +98,17 @@ export async function sendMessage(input: SendMessageInput) {
       if (orderItem.sourcing_agent_id) {
         recipientIds.push(orderItem.sourcing_agent_id);
       }
-      if (orderItem.supervisor_id && orderItem.supervisor_id !== orderItem.sourcing_agent_id) {
+      if (
+        orderItem.supervisor_id &&
+        orderItem.supervisor_id !== orderItem.sourcing_agent_id
+      ) {
         recipientIds.push(orderItem.supervisor_id);
       }
 
       if (recipientIds.length > 0) {
-        const messagePreview = input.content.slice(0, 100) + (input.content.length > 100 ? "..." : "");
+        const messagePreview =
+          input.content.slice(0, 100) +
+          (input.content.length > 100 ? "..." : "");
         const notifications = recipientIds.map((recipientId) => ({
           user_id: recipientId,
           sender_user_id: user.id,
@@ -111,7 +118,9 @@ export async function sendMessage(input: SendMessageInput) {
           is_read: false,
         }));
 
-        await supabase.from("notifications").insert(notifications);
+        console.log(notifications);
+
+        await service.from("notifications").insert(notifications);
       }
     }
   } catch (notificationError) {
