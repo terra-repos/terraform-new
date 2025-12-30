@@ -12,7 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { uploadImage } from "../../uploadImage";
+import { uploadImage } from "../../actions/uploads/uploadImage";
 import FinalizeModal from "@/components/finalize-modal";
 import { finalizeDesign } from "@/app/actions/designs/finalize-design";
 import { useRouter } from "next/navigation";
@@ -48,6 +48,7 @@ export default function DesignChat() {
   const [isGeneratingCustomizations, setIsGeneratingCustomizations] =
     useState(false);
   const [isSubmittingSample, setIsSubmittingSample] = useState(false);
+  const [selectedImageModel, setSelectedImageModel] = useState<"gemini" | "gpt">("gemini");
 
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -58,6 +59,9 @@ export default function DesignChat() {
   const { messages, sendMessage, status, setMessages } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/design/chat",
+      body: () => ({
+        imageModel: selectedImageModel,
+      }),
     }),
   });
 
@@ -432,7 +436,7 @@ export default function DesignChat() {
   };
 
   return (
-    <div className="flex max-h-screen flex-col w-full overflow-hidden">
+    <div className="flex h-full flex-col w-full overflow-hidden">
       {/* Messages area */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
         {!hasStarted ? (
@@ -699,6 +703,21 @@ export default function DesignChat() {
               onDragOver={handleDragOver}
               onDrop={handleDrop}
             >
+              {/* Model Switcher - only show after first image generated */}
+              {getAllGeneratedImages().length > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-neutral-500">Model:</span>
+                  <select
+                    value={selectedImageModel}
+                    onChange={(e) => setSelectedImageModel(e.target.value as "gemini" | "gpt")}
+                    className="text-xs bg-neutral-100 border border-neutral-200 rounded-lg px-2 py-1 text-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-300"
+                  >
+                    <option value="gemini">Gemini 2.5 Flash</option>
+                    <option value="gpt">GPT Image 1.5</option>
+                  </select>
+                </div>
+              )}
+
               {/* Image previews inside pill */}
               {uploadedImages.length > 0 && (
                 <div className="flex flex-wrap gap-2">

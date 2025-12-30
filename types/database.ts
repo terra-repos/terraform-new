@@ -306,6 +306,99 @@ export type Database = {
           },
         ]
       }
+      comm_messages: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          message_type: Database["public"]["Enums"]["comm_message_type"]
+          metadata: Json | null
+          parent_id: string | null
+          sender_id: string
+          sender_type: Database["public"]["Enums"]["comm_sender_type"]
+          thread_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message_type?: Database["public"]["Enums"]["comm_message_type"]
+          metadata?: Json | null
+          parent_id?: string | null
+          sender_id: string
+          sender_type: Database["public"]["Enums"]["comm_sender_type"]
+          thread_id: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message_type?: Database["public"]["Enums"]["comm_message_type"]
+          metadata?: Json | null
+          parent_id?: string | null
+          sender_id?: string
+          sender_type?: Database["public"]["Enums"]["comm_sender_type"]
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comm_messages_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "comm_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comm_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "comm_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "comm_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comm_threads: {
+        Row: {
+          created_at: string
+          id: string
+          order_item_id: string
+          status: Database["public"]["Enums"]["comm_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_item_id: string
+          status?: Database["public"]["Enums"]["comm_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_item_id?: string
+          status?: Database["public"]["Enums"]["comm_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comm_threads_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: true
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_exports: {
         Row: {
           created_at: string | null
@@ -1761,50 +1854,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "order_timeline_ack_order_timeline_id_fkey"
-            columns: ["order_timeline_id"]
-            isOneToOne: false
-            referencedRelation: "order_timeline"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      order_timeline_communication: {
-        Row: {
-          created_at: string | null
-          id: string
-          influencer_email: string | null
-          last_responder: string | null
-          message_count: number | null
-          messages: Json
-          order_timeline_id: string
-          reminder_counter: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          influencer_email?: string | null
-          last_responder?: string | null
-          message_count?: number | null
-          messages?: Json
-          order_timeline_id: string
-          reminder_counter?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          influencer_email?: string | null
-          last_responder?: string | null
-          message_count?: number | null
-          messages?: Json
-          order_timeline_id?: string
-          reminder_counter?: number | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "order_timeline_communication_order_timeline_id_fkey"
             columns: ["order_timeline_id"]
             isOneToOne: false
             referencedRelation: "order_timeline"
@@ -6345,6 +6394,9 @@ export type Database = {
         | "returned"
         | "confirmed"
       collection_status: "draft" | "published" | "archived"
+      comm_message_type: "text" | "options" | "selection" | "image"
+      comm_sender_type: "client" | "admin" | "system"
+      comm_status: "open" | "awaiting_client" | "awaiting_admin" | "resolved"
       error_context: "terraform" | "app" | "api" | "drop" | "auth" | "db"
       error_status: "unreviewed" | "pending" | "resolved"
       fulfillment_status:
@@ -6607,6 +6659,9 @@ export const Constants = {
         "confirmed",
       ],
       collection_status: ["draft", "published", "archived"],
+      comm_message_type: ["text", "options", "selection", "image"],
+      comm_sender_type: ["client", "admin", "system"],
+      comm_status: ["open", "awaiting_client", "awaiting_admin", "resolved"],
       error_context: ["terraform", "app", "api", "drop", "auth", "db"],
       error_status: ["unreviewed", "pending", "resolved"],
       fulfillment_status: [

@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { ThemeProvider } from "next-themes";
 import Sidebar from "@/app/_components/sidebar";
+import { NotificationsProvider } from "@/app/_components/notifications-provider";
 
 export type UserData = {
   firstName: string | null;
@@ -32,20 +33,20 @@ export default function LayoutShell({
       enableSystem
       disableTransitionOnChange
     >
-      <div className="flex min-h-screen  text-slate-900">
-        <Sidebar
-          isOpen={sidebarOpen}
-          onToggle={() => setSidebarOpen((v) => !v)}
-          user={user}
-          cartCount={cartCount}
-          hasSampleOrders={hasSampleOrders}
-        />
-        <main className="relative flex flex-1 bg-[#FAFAFA]">
-          <div className="flex flex-1 items-center justify-center w-full ">
+      <NotificationsProvider>
+        <div className="flex h-screen overflow-hidden text-slate-900">
+          <Sidebar
+            isOpen={sidebarOpen}
+            onToggle={() => setSidebarOpen((v) => !v)}
+            user={user}
+            cartCount={cartCount}
+            hasSampleOrders={hasSampleOrders}
+          />
+          <main className="relative flex-1 bg-[#FAFAFA] overflow-y-auto pt-14 md:pt-0">
             {children}
-          </div>
-        </main>
-      </div>
+          </main>
+        </div>
+      </NotificationsProvider>
     </ThemeProvider>
   );
 }

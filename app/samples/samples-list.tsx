@@ -257,8 +257,8 @@ export default function SamplesList({ items }: SamplesListProps) {
 
   return (
     <>
-      <div className="w-5/6 min-h-full bg-neutral-50">
-        <div className="w-full px-6 py-8">
+      <div className="w-full min-h-full bg-neutral-50">
+        <div className="w-full max-w-7xl mx-auto px-6 py-8">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <button

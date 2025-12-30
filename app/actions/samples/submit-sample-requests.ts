@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/types/database";
 import type { ProductData } from "@/types/extras";
 
@@ -36,6 +37,7 @@ function slugify(text: string): string {
 
 export async function submitSampleRequests(): Promise<SubmitSampleRequestsResult> {
   const supabase = await createClient();
+  const service = createServiceClient();
 
   // Get authenticated user
   const {
@@ -48,7 +50,7 @@ export async function submitSampleRequests(): Promise<SubmitSampleRequestsResult
   }
 
   // Get user's organization with org details
-  const { data: orgMembership, error: orgError } = await supabase
+  const { data: orgMembership, error: orgError } = await service
     .from("organization_members")
     .select(
       `
@@ -69,7 +71,7 @@ export async function submitSampleRequests(): Promise<SubmitSampleRequestsResult
 
   const orgName = (orgMembership.organizations as unknown as { name: string })
     .name; // Count existing orders for this organization to generate order number
-  const { count: existingOrderCount } = await supabase
+  const { count: existingOrderCount } = await service
     .from("orders")
     .select("*", { count: "exact", head: true })
     .eq("organization_id", orgMembership.organization_id);
@@ -79,7 +81,7 @@ export async function submitSampleRequests(): Promise<SubmitSampleRequestsResult
   ).padStart(4, "0")}`;
 
   // Fetch cart items with their designs
-  const { data: cartItems, error: cartError } = await supabase
+  const { data: cartItems, error: cartError } = await service
     .from("user_carts")
     .select(
       `
@@ -114,7 +116,7 @@ export async function submitSampleRequests(): Promise<SubmitSampleRequestsResult
   }, 0);
 
   // Create the order
-  const { data: orderRecord, error: orderError } = await supabase
+  const { data: orderRecord, error: orderError } = await service
     .from("orders")
     .insert({
       organization_id: orgMembership.organization_id,
@@ -145,7 +147,7 @@ export async function submitSampleRequests(): Promise<SubmitSampleRequestsResult
     const productData = design.product_data?.[0] as ProductData | undefined;
 
     // Create product
-    const { data: productRecord, error: productError } = await supabase
+    const { data: productRecord, error: productError } = await service
       .from("products")
       .insert({
         title: design.product_name || "Custom Design",
@@ -166,7 +168,7 @@ export async function submitSampleRequests(): Promise<SubmitSampleRequestsResult
     }
 
     // Create product variant
-    const { data: variantRecord, error: variantError } = await supabase
+    const { data: variantRecord, error: variantError } = await service
       .from("product_variants")
       .insert({
         product_id: productRecord.id,
@@ -216,7 +218,7 @@ export async function submitSampleRequests(): Promise<SubmitSampleRequestsResult
 
   // Insert order items
   if (orderItems.length > 0) {
-    const { error: orderItemsError } = await supabase
+    const { error: orderItemsError } = await service
       .from("order_items")
       .insert(orderItems);
 
@@ -228,7 +230,7 @@ export async function submitSampleRequests(): Promise<SubmitSampleRequestsResult
 
   // Clear the cart items that were processed
   const cartIdsToRemove = typedCartItems.map((item) => item.id);
-  const { error: deleteError } = await supabase
+  const { error: deleteError } = await service
     .from("user_carts")
     .delete()
     .in("id", cartIdsToRemove);

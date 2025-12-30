@@ -9,13 +9,17 @@ import {
 } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
 import { google } from "@ai-sdk/google";
+import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
-import { uploadImage } from "@/app/uploadImage";
+import { uploadImage } from "@/app/actions/uploads/uploadImage";
 
 export const maxDuration = 60;
 
 // Helper to convert base64 to File for upload
-function base64ToFile(base64Data: string, filename: string = "generated.png"): File {
+function base64ToFile(
+  base64Data: string,
+  filename: string = "generated.png"
+): File {
   const buffer = Buffer.from(base64Data, "base64");
   const blob = new Blob([buffer], { type: "image/png" });
   return new File([blob], filename, { type: "image/png" });
@@ -81,7 +85,12 @@ function buildImageCatalog(messages: UIMessage[]): {
   catalog: Array<{ id: string; url: string; type: string; context: string }>;
   catalogText: string;
 } {
-  const catalog: Array<{ id: string; url: string; type: string; context: string }> = [];
+  const catalog: Array<{
+    id: string;
+    url: string;
+    type: string;
+    context: string;
+  }> = [];
   let imageCounter = 0;
 
   messages.forEach((msg, msgIndex) => {
@@ -100,7 +109,10 @@ function buildImageCatalog(messages: UIMessage[]): {
             id: `img_${imageCounter}`,
             url: part.url,
             type: "user_upload",
-            context: `User uploaded image #${imageCounter} with message: "${textParts.substring(0, 100)}"`,
+            context: `User uploaded image #${imageCounter} with message: "${textParts.substring(
+              0,
+              100
+            )}"`,
           });
         }
       });
@@ -109,7 +121,10 @@ function buildImageCatalog(messages: UIMessage[]): {
     // Check for generated images in tool outputs (assistant messages)
     if (msg.role === "assistant") {
       msg.parts.forEach((part) => {
-        if (part.type === "tool-generateDesign" && part.state === "output-available") {
+        if (
+          part.type === "tool-generateDesign" &&
+          part.state === "output-available"
+        ) {
           const output = part.output as any;
           if (output && output.imageUrl) {
             imageCounter++;
@@ -128,14 +143,22 @@ function buildImageCatalog(messages: UIMessage[]): {
   // Create a text summary for Claude
   const catalogText =
     catalog.length > 0
-      ? `\n\nAVAILABLE IMAGES:\n${catalog.map((img) => `- ${img.id}: ${img.context}`).join("\n")}`
+      ? `\n\nAVAILABLE IMAGES:\n${catalog
+          .map((img) => `- ${img.id}: ${img.context}`)
+          .join("\n")}`
       : "";
 
   return { catalog, catalogText };
 }
 
 export async function POST(req: Request) {
-  const { messages }: { messages: UIMessage[] } = await req.json();
+  const {
+    messages,
+    imageModel = "gemini",
+  }: {
+    messages: UIMessage[];
+    imageModel?: "gemini" | "gpt";
+  } = await req.json();
 
   // Keep original messages for tool access (via closure)
   const originalMessages = messages;
@@ -211,7 +234,10 @@ Keep your text responses brief and conversational (1-2 sentences).`,
                 // Check user uploads
                 if (msg.role === "user") {
                   msg.parts.forEach((part) => {
-                    if (part.type === "file" && part.mediaType?.startsWith("image/")) {
+                    if (
+                      part.type === "file" &&
+                      part.mediaType?.startsWith("image/")
+                    ) {
                       urls.push(part.url);
                     }
                   });
@@ -220,7 +246,10 @@ Keep your text responses brief and conversational (1-2 sentences).`,
                 // Check generated images
                 if (msg.role === "assistant") {
                   msg.parts.forEach((part) => {
-                    if (part.type === "tool-generateDesign" && part.state === "output-available") {
+                    if (
+                      part.type === "tool-generateDesign" &&
+                      part.state === "output-available"
+                    ) {
                       const output = part.output as any;
                       if (output?.imageUrl) {
                         urls.push(output.imageUrl);
@@ -246,32 +275,38 @@ IMPORTANT: The generated image MUST follow this exact format:
 - Clean product shot style
 - Centered composition`;
 
-            // Use Gemini 2.5 Flash Image for generation/editing
-            // It uses generateText (not generateImage) and returns files
-            const imageResult = sourceImageUrls.length > 0
-              ? await generateText({
-                  model: google("gemini-2.5-flash-image"),
-                  messages: [
-                    {
-                      role: "user",
-                      content: [
-                        {
-                          type: "text",
-                          text: formattedPrompt,
-                        },
-                        // Include all images in the content
-                        ...sourceImageUrls.map((url) => ({
-                          type: "image" as const,
-                          image: url,
-                        })),
-                      ],
-                    },
-                  ],
-                })
-              : await generateText({
-                  model: google("gemini-2.5-flash-image"),
-                  prompt: formattedPrompt,
-                });
+            // Select the model based on imageModel parameter
+            const selectedModel =
+              imageModel === "gpt"
+                ? openai("gpt-image-1.5")
+                : google("gemini-2.5-flash-image");
+
+            // Generate image using selected model
+            const imageResult =
+              sourceImageUrls.length > 0
+                ? await generateText({
+                    model: selectedModel,
+                    messages: [
+                      {
+                        role: "user",
+                        content: [
+                          {
+                            type: "text",
+                            text: formattedPrompt,
+                          },
+                          // Include all images in the content
+                          ...sourceImageUrls.map((url) => ({
+                            type: "image" as const,
+                            image: url,
+                          })),
+                        ],
+                      },
+                    ],
+                  })
+                : await generateText({
+                    model: selectedModel,
+                    prompt: formattedPrompt,
+                  });
 
             // Find the generated image in result.files
             const generatedImage = imageResult.files?.find((file) =>

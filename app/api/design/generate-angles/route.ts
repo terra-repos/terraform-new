@@ -1,11 +1,14 @@
 import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
-import { uploadImage } from "@/app/uploadImage";
+import { uploadImage } from "@/app/actions/uploads/uploadImage";
 
 export const maxDuration = 60;
 
 // Helper to convert base64 to File for upload
-function base64ToFile(base64Data: string, filename: string = "generated.png"): File {
+function base64ToFile(
+  base64Data: string,
+  filename: string = "generated.png"
+): File {
   const buffer = Buffer.from(base64Data, "base64");
   const blob = new Blob([buffer], { type: "image/png" });
   return new File([blob], filename, { type: "image/png" });
@@ -54,7 +57,9 @@ IMPORTANT: The generated image MUST follow this exact format:
 
       if (generatedImage) {
         // Convert Uint8Array to base64
-        const base64 = Buffer.from(generatedImage.uint8Array).toString("base64");
+        const base64 = Buffer.from(generatedImage.uint8Array).toString(
+          "base64"
+        );
 
         // Upload to GCS
         const file = base64ToFile(base64);
@@ -66,6 +71,9 @@ IMPORTANT: The generated image MUST follow this exact format:
     return Response.json({ success: true, images: generatedImages });
   } catch (error) {
     console.error("Angle generation error:", error);
-    return Response.json({ success: false, error: "Failed to generate angles" });
+    return Response.json({
+      success: false,
+      error: "Failed to generate angles",
+    });
   }
 }
