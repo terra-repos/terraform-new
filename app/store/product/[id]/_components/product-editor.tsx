@@ -7,6 +7,8 @@ import { type ProductWithRelations } from "../page";
 import ProductInfoSection from "./product-info-section";
 import OptionsEditor from "./options-editor";
 import VariantsEditor from "./variants-editor";
+import AnalyticsSection from "./analytics-section";
+import DangerZoneSection from "./danger-zone-section";
 
 type ProductEditorProps = {
   product: ProductWithRelations;
@@ -56,6 +58,15 @@ export default function ProductEditor({ product }: ProductEditorProps) {
         <VariantsEditor
           product={currentProduct}
           onUpdate={setCurrentProduct}
+        />
+
+        {/* Analytics */}
+        <AnalyticsSection productId={currentProduct.id} />
+
+        {/* Danger Zone */}
+        <DangerZoneSection
+          productId={currentProduct.id}
+          productTitle={currentProduct.title || "Untitled Product"}
         />
       </div>
     </div>

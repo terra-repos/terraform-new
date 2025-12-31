@@ -7,6 +7,7 @@ import { Database } from "@/types/database";
 import VariantEditModal from "./variant-edit-modal";
 
 type ProductVariant = Database["public"]["Tables"]["product_variants"]["Row"];
+type OptionValue = Database["public"]["Tables"]["option_values"]["Row"];
 
 type VariantsEditorProps = {
   product: ProductWithRelations;
@@ -46,6 +47,27 @@ function calculatePricing(variant: ProductVariant) {
   };
 }
 
+// Get option values for a specific variant
+function getVariantOptionValues(
+  product: ProductWithRelations,
+  variantId: string
+): { optionType: string; value: string }[] {
+  const result: { optionType: string; value: string }[] = [];
+
+  for (const option of product.options || []) {
+    for (const optionValue of option.option_values || []) {
+      if (optionValue.variant_id === variantId && optionValue.value) {
+        result.push({
+          optionType: option.option_type,
+          value: optionValue.value,
+        });
+      }
+    }
+  }
+
+  return result;
+}
+
 export default function VariantsEditor({
   product,
   onUpdate,
@@ -56,13 +78,34 @@ export default function VariantsEditor({
 
   const variants = product.product_variants || [];
 
-  const handleVariantUpdate = (updatedVariant: ProductVariant) => {
-    onUpdate({
+  const handleVariantUpdate = (
+    updatedVariant: ProductVariant,
+    updatedOptionValues?: OptionValue[]
+  ) => {
+    // Update the variant
+    const updatedProduct = {
       ...product,
       product_variants: variants.map((v) =>
         v.id === updatedVariant.id ? updatedVariant : v
       ),
-    });
+    };
+
+    // If option values were updated, update them in the options array
+    if (updatedOptionValues) {
+      updatedProduct.options = product.options.map((option) => ({
+        ...option,
+        option_values: [
+          // Keep option values for other variants
+          ...option.option_values.filter(
+            (ov) => ov.variant_id !== updatedVariant.id
+          ),
+          // Add updated values for this variant
+          ...updatedOptionValues.filter((ov) => ov.option_id === option.id),
+        ],
+      }));
+    }
+
+    onUpdate(updatedProduct);
     setEditingVariant(null);
   };
 
@@ -90,6 +133,7 @@ export default function VariantsEditor({
                 const images = variant.images as { src: string }[] | null;
                 const thumbnailSrc =
                   images?.[0]?.src || product.thumbnail_image || null;
+                const optionValues = getVariantOptionValues(product, variant.id);
 
                 return (
                   <div
@@ -120,8 +164,22 @@ export default function VariantsEditor({
                               {variant.title || "Untitled Variant"}
                             </h3>
 
-                            {/* Badges */}
-                            <div className="flex items-center gap-2 mt-1">
+                            {/* Option Value Badges */}
+                            {optionValues.length > 0 && (
+                              <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                {optionValues.map((ov, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="inline-flex items-center px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded-full"
+                                  >
+                                    {ov.optionType}: {ov.value}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Status Badges */}
+                            <div className="flex items-center gap-2 mt-1.5">
                               {variant.drop_approved ? (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
                                   <Check className="h-3 w-3" />

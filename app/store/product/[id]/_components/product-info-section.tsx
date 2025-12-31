@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { ImageIcon, Loader2, Check, X } from "lucide-react";
+import { ImageIcon, Loader2, Check, X, Camera } from "lucide-react";
 import { type ProductWithRelations } from "../page";
 import { updateProduct } from "@/app/actions/store/update-product";
 import { uploadImage } from "@/app/actions/uploads/uploadImage";
@@ -35,6 +35,7 @@ export default function ProductInfoSection({
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(
     product.thumbnail_image
   );
+  const [bodyHtml, setBodyHtml] = useState(product.body_html || "");
 
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -47,7 +48,8 @@ export default function ProductInfoSection({
   const hasChanges =
     title !== (product.title || "") ||
     slug !== (product.slug || "") ||
-    thumbnailPreview !== product.thumbnail_image;
+    thumbnailPreview !== product.thumbnail_image ||
+    bodyHtml !== (product.body_html || "");
 
   // Auto-slugify title if not manually edited
   useEffect(() => {
@@ -61,32 +63,35 @@ export default function ProductInfoSection({
     setSlug(slugify(value));
   };
 
-  const handleImageSelect = useCallback(async (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      setError("Please select an image file");
-      return;
-    }
+  const handleImageSelect = useCallback(
+    async (file: File) => {
+      if (!file.type.startsWith("image/")) {
+        setError("Please select an image file");
+        return;
+      }
 
-    // Show preview immediately
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setThumbnailPreview(e.target?.result as string);
-    };
-    reader.readAsDataURL(file);
+      // Show preview immediately
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setThumbnailPreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
 
-    // Upload to GCS
-    setIsUploadingImage(true);
-    setError(null);
-    try {
-      const url = await uploadImage(file, "product-thumbnails");
-      setThumbnailPreview(url);
-    } catch {
-      setError("Failed to upload image. Please try again.");
-      setThumbnailPreview(product.thumbnail_image);
-    } finally {
-      setIsUploadingImage(false);
-    }
-  }, [product.thumbnail_image]);
+      // Upload to GCS
+      setIsUploadingImage(true);
+      setError(null);
+      try {
+        const url = await uploadImage(file, "product-thumbnails");
+        setThumbnailPreview(url);
+      } catch {
+        setError("Failed to upload image. Please try again.");
+        setThumbnailPreview(product.thumbnail_image);
+      } finally {
+        setIsUploadingImage(false);
+      }
+    },
+    [product.thumbnail_image]
+  );
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -114,6 +119,7 @@ export default function ProductInfoSection({
         title: title || null,
         slug: slug || null,
         thumbnail_image: thumbnailPreview,
+        body_html: bodyHtml || null,
       });
 
       if (result.success) {
@@ -123,6 +129,7 @@ export default function ProductInfoSection({
           title: title || null,
           slug: slug || null,
           thumbnail_image: thumbnailPreview,
+          body_html: bodyHtml || null,
         });
         setTimeout(() => setSaveStatus("idle"), 2000);
       } else {
@@ -145,15 +152,12 @@ export default function ProductInfoSection({
         </h2>
       </div>
 
-      <div className="p-6">
+      <div className="p-6 space-y-6">
+        {/* Top row: Thumbnail and basic fields */}
         <div className="flex gap-6">
           {/* Thumbnail */}
           <div
-            className={`relative w-40 h-40 bg-neutral-100 rounded-xl border-2 border-dashed border-neutral-300 cursor-pointer transition-colors flex-shrink-0 ${
-              !thumbnailPreview && !isUploadingImage
-                ? "hover:border-orange-400 hover:bg-orange-50"
-                : ""
-            }`}
+            className="relative w-40 h-40 bg-neutral-100 rounded-xl overflow-hidden flex-shrink-0 group cursor-pointer"
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
@@ -167,20 +171,25 @@ export default function ProductInfoSection({
             />
 
             {thumbnailPreview ? (
-              <div className="relative h-full w-full">
+              <>
                 <img
                   src={thumbnailPreview}
                   alt="Product thumbnail"
-                  className="w-full h-full object-cover rounded-xl"
+                  className="w-full h-full object-cover"
                 />
-                {isUploadingImage && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-xl">
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                  {isUploadingImage ? (
                     <Loader2 className="h-6 w-6 text-white animate-spin" />
-                  </div>
-                )}
-              </div>
+                  ) : (
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center text-white">
+                      <Camera className="h-6 w-6 mb-1" />
+                      <span className="text-xs font-medium">Change</span>
+                    </div>
+                  )}
+                </div>
+              </>
             ) : (
-              <div className="h-full flex flex-col items-center justify-center text-neutral-400">
+              <div className="h-full flex flex-col items-center justify-center text-neutral-400 border-2 border-dashed border-neutral-300 rounded-xl hover:border-orange-400 hover:bg-orange-50 transition-colors">
                 {isUploadingImage ? (
                   <Loader2 className="h-8 w-8 animate-spin" />
                 ) : (
@@ -238,15 +247,36 @@ export default function ProductInfoSection({
           </div>
         </div>
 
+        {/* Description */}
+        <div>
+          <label
+            htmlFor="productDescription"
+            className="block text-sm font-medium text-neutral-700 mb-1.5"
+          >
+            Product Description
+          </label>
+          <textarea
+            id="productDescription"
+            value={bodyHtml}
+            onChange={(e) => setBodyHtml(e.target.value)}
+            placeholder="Enter product description for your store..."
+            rows={5}
+            className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow resize-none"
+          />
+          <p className="mt-1.5 text-xs text-neutral-500">
+            This description will be displayed on your storefront product page.
+          </p>
+        </div>
+
         {/* Error message */}
         {error && (
-          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-sm text-red-600">{error}</p>
           </div>
         )}
 
         {/* Save Button */}
-        <div className="mt-6 flex items-center justify-end gap-3">
+        <div className="flex items-center justify-end gap-3 pt-2">
           {saveStatus === "success" && (
             <span className="text-sm text-green-600 flex items-center gap-1">
               <Check className="h-4 w-4" />

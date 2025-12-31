@@ -7,6 +7,7 @@ export type UpdateProductInput = {
   title?: string | null;
   slug?: string | null;
   thumbnail_image?: string | null;
+  body_html?: string | null;
 };
 
 export type UpdateProductResult = {
@@ -72,6 +73,7 @@ export async function updateProduct(
       title: input.title,
       slug: input.slug,
       thumbnail_image: input.thumbnail_image,
+      body_html: input.body_html,
       updated_at: new Date().toISOString(),
     })
     .eq("id", productId);

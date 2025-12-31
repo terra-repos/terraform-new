@@ -4,10 +4,6 @@ import { useState } from "react";
 import { Plus, Trash2, X, Loader2 } from "lucide-react";
 import { type ProductWithRelations } from "../page";
 import { createOption, deleteOption } from "@/app/actions/store/manage-options";
-import {
-  createOptionValue,
-  deleteOptionValue,
-} from "@/app/actions/store/manage-option-values";
 
 type OptionsEditorProps = {
   product: ProductWithRelations;
@@ -22,14 +18,6 @@ export default function OptionsEditor({
   const [newOptionType, setNewOptionType] = useState("");
   const [isCreatingOption, setIsCreatingOption] = useState(false);
   const [deletingOptionId, setDeletingOptionId] = useState<string | null>(null);
-
-  const [addingValueToOptionId, setAddingValueToOptionId] = useState<
-    string | null
-  >(null);
-  const [newValueText, setNewValueText] = useState("");
-  const [isCreatingValue, setIsCreatingValue] = useState(false);
-  const [deletingValueId, setDeletingValueId] = useState<string | null>(null);
-
   const [error, setError] = useState<string | null>(null);
 
   const options = product.options || [];
@@ -46,10 +34,7 @@ export default function OptionsEditor({
       if (result.success && result.option) {
         onUpdate({
           ...product,
-          options: [
-            ...options,
-            { ...result.option, option_values: [] },
-          ],
+          options: [...options, { ...result.option, option_values: [] }],
         });
         setNewOptionType("");
         setIsAddingOption(false);
@@ -85,78 +70,15 @@ export default function OptionsEditor({
     }
   };
 
-  const handleAddValue = async (optionId: string) => {
-    if (!newValueText.trim()) return;
-
-    setIsCreatingValue(true);
-    setError(null);
-
-    try {
-      const result = await createOptionValue(
-        optionId,
-        product.id,
-        newValueText.trim()
-      );
-
-      if (result.success && result.optionValue) {
-        onUpdate({
-          ...product,
-          options: options.map((opt) =>
-            opt.id === optionId
-              ? {
-                  ...opt,
-                  option_values: [...opt.option_values, result.optionValue!],
-                }
-              : opt
-          ),
-        });
-        setNewValueText("");
-        setAddingValueToOptionId(null);
-      } else {
-        setError(result.error || "Failed to add value");
-      }
-    } catch {
-      setError("An unexpected error occurred");
-    } finally {
-      setIsCreatingValue(false);
-    }
-  };
-
-  const handleDeleteValue = async (optionId: string, valueId: string) => {
-    setDeletingValueId(valueId);
-    setError(null);
-
-    try {
-      const result = await deleteOptionValue(valueId);
-
-      if (result.success) {
-        onUpdate({
-          ...product,
-          options: options.map((opt) =>
-            opt.id === optionId
-              ? {
-                  ...opt,
-                  option_values: opt.option_values.filter(
-                    (v) => v.id !== valueId
-                  ),
-                }
-              : opt
-          ),
-        });
-      } else {
-        setError(result.error || "Failed to delete value");
-      }
-    } catch {
-      setError("An unexpected error occurred");
-    } finally {
-      setDeletingValueId(null);
-    }
-  };
-
   return (
     <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
       <div className="px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
-        <h2 className="text-lg font-medium text-neutral-900">Options</h2>
+        <div>
+          <h2 className="text-lg font-medium text-neutral-900">Options</h2>
+          <p className="text-sm text-neutral-500 mt-0.5">
+            Define option types for this product (e.g., Size, Color)
+          </p>
+        </div>
         {!isAddingOption && (
           <button
             onClick={() => setIsAddingOption(true)}
@@ -224,107 +146,30 @@ export default function OptionsEditor({
           <div className="text-center py-8 text-neutral-500">
             <p className="text-sm">No options defined for this product.</p>
             <p className="text-xs mt-1">
-              Options let customers choose variations like size or color.
+              Add options like Size or Color, then assign values to each variant.
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="flex flex-wrap gap-2">
             {options.map((option) => (
               <div
                 key={option.id}
-                className="border border-neutral-200 rounded-lg overflow-hidden"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-neutral-100 rounded-lg"
               >
-                {/* Option header */}
-                <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200 flex items-center justify-between">
-                  <h3 className="font-medium text-neutral-900">
-                    {option.option_type}
-                  </h3>
-                  <button
-                    onClick={() => handleDeleteOption(option.id)}
-                    disabled={deletingOptionId === option.id}
-                    className="p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                  >
-                    {deletingOptionId === option.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-
-                {/* Option values */}
-                <div className="p-4">
-                  <div className="flex flex-wrap gap-2">
-                    {option.option_values.map((value) => (
-                      <div
-                        key={value.id}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-neutral-100 rounded-full text-sm"
-                      >
-                        <span>{value.value}</span>
-                        <button
-                          onClick={() => handleDeleteValue(option.id, value.id)}
-                          disabled={deletingValueId === value.id}
-                          className="p-0.5 text-neutral-400 hover:text-red-500 transition-colors"
-                        >
-                          {deletingValueId === value.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <X className="h-3 w-3" />
-                          )}
-                        </button>
-                      </div>
-                    ))}
-
-                    {/* Add value button/input */}
-                    {addingValueToOptionId === option.id ? (
-                      <div className="inline-flex items-center gap-1">
-                        <input
-                          type="text"
-                          value={newValueText}
-                          onChange={(e) => setNewValueText(e.target.value)}
-                          placeholder="Value"
-                          className="w-24 px-2 py-1 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleAddValue(option.id);
-                            if (e.key === "Escape") {
-                              setAddingValueToOptionId(null);
-                              setNewValueText("");
-                            }
-                          }}
-                        />
-                        <button
-                          onClick={() => handleAddValue(option.id)}
-                          disabled={!newValueText.trim() || isCreatingValue}
-                          className="p-1.5 text-orange-600 hover:bg-orange-50 rounded transition-colors disabled:opacity-50"
-                        >
-                          {isCreatingValue ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Plus className="h-4 w-4" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => {
-                            setAddingValueToOptionId(null);
-                            setNewValueText("");
-                          }}
-                          className="p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded transition-colors"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setAddingValueToOptionId(option.id)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-orange-600 hover:bg-orange-50 rounded-full transition-colors"
-                      >
-                        <Plus className="h-3 w-3" />
-                        Add Value
-                      </button>
-                    )}
-                  </div>
-                </div>
+                <span className="font-medium text-neutral-900">
+                  {option.option_type}
+                </span>
+                <button
+                  onClick={() => handleDeleteOption(option.id)}
+                  disabled={deletingOptionId === option.id}
+                  className="p-1 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                >
+                  {deletingOptionId === option.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
+                </button>
               </div>
             ))}
           </div>

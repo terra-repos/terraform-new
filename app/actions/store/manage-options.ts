@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { revalidatePath } from "next/cache";
 import { Database } from "@/types/database";
 
@@ -22,6 +23,7 @@ export async function createOption(
   optionType: string
 ): Promise<CreateOptionResult> {
   const supabase = await createClient();
+  const service = createServiceClient();
 
   const {
     data: { user },
@@ -43,7 +45,7 @@ export async function createOption(
   }
 
   // Verify product belongs to user's store
-  const { data: product } = await supabase
+  const { data: product } = await service
     .from("products")
     .select("id, store_id")
     .eq("id", productId)
@@ -54,13 +56,13 @@ export async function createOption(
   }
 
   // Get existing options count for position
-  const { count } = await supabase
+  const { count } = await service
     .from("options")
     .select("*", { count: "exact", head: true })
     .eq("product_id", productId);
 
   // Create the option
-  const { data: newOption, error: insertError } = await supabase
+  const { data: newOption, error: insertError } = await service
     .from("options")
     .insert({
       product_id: productId,
@@ -84,6 +86,7 @@ export async function deleteOption(
   optionId: string
 ): Promise<DeleteOptionResult> {
   const supabase = await createClient();
+  const service = createServiceClient();
 
   const {
     data: { user },
@@ -94,7 +97,7 @@ export async function deleteOption(
   }
 
   // Get user's store
-  const { data: store } = await supabase
+  const { data: store } = await service
     .from("drop_stores")
     .select("id")
     .eq("user_id", user.id)
@@ -105,7 +108,7 @@ export async function deleteOption(
   }
 
   // Get option with product info to verify ownership
-  const { data: option } = await supabase
+  const { data: option } = await service
     .from("options")
     .select("id, product_id, products!inner(store_id)")
     .eq("id", optionId)
@@ -115,16 +118,17 @@ export async function deleteOption(
     return { success: false, error: "Option not found" };
   }
 
-  const productStoreId = (option.products as { store_id: string | null })?.store_id;
+  const productStoreId = (option.products as { store_id: string | null })
+    ?.store_id;
   if (productStoreId !== store.id) {
     return { success: false, error: "Option not found" };
   }
 
   // Delete associated option values first
-  await supabase.from("option_values").delete().eq("option_id", optionId);
+  await service.from("option_values").delete().eq("option_id", optionId);
 
   // Delete the option
-  const { error: deleteError } = await supabase
+  const { error: deleteError } = await service
     .from("options")
     .delete()
     .eq("id", optionId);
