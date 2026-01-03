@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { X, Loader2, Plus, Trash2, GripVertical } from "lucide-react";
+import { X, Loader2, Plus, Trash2, GripVertical, AlertCircle, AlertTriangle } from "lucide-react";
 import { Database } from "@/types/database";
 import { type ProductWithRelations } from "../page";
 import { updateVariant } from "@/app/actions/store/update-variant";
 import { setVariantOptionValues } from "@/app/actions/store/manage-option-values";
 import { uploadImage } from "@/app/actions/uploads/uploadImage";
+import DeleteVariantModal from "./delete-variant-modal";
 
 type ProductVariant = Database["public"]["Tables"]["product_variants"]["Row"];
 type OptionValue = Database["public"]["Tables"]["option_values"]["Row"];
@@ -18,6 +19,7 @@ type VariantEditModalProps = {
   product: ProductWithRelations;
   onClose: () => void;
   onSave: (variant: ProductVariant, optionValues?: OptionValue[]) => void;
+  onDeleted?: () => void;
 };
 
 function formatPrice(price: number | null): string {
@@ -64,10 +66,12 @@ export default function VariantEditModal({
   product,
   onClose,
   onSave,
+  onDeleted,
 }: VariantEditModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [title, setTitle] = useState(variant.title || "");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [dropCustomPrice, setDropCustomPrice] = useState(
     variant.drop_custom_price?.toString() || ""
   );
@@ -104,6 +108,35 @@ export default function VariantEditModal({
     product.drop_shipping_method === "both";
 
   const options = product.options || [];
+
+  // Validation checks
+  const hasImages = images.length > 0;
+  const missingOptionValues = options.filter(
+    (opt) => !optionValues[opt.id]?.trim()
+  );
+  const hasPriceError = showPricing && customPrice > 0 && !isValidPrice;
+
+  // Build validation errors list
+  const validationErrors: string[] = [];
+  if (!hasImages) {
+    validationErrors.push("At least one image is required");
+  }
+  if (missingOptionValues.length > 0) {
+    const missingNames = missingOptionValues
+      .map((opt) => opt.option_type)
+      .join(", ");
+    validationErrors.push(`Missing option values: ${missingNames}`);
+  }
+  if (hasPriceError) {
+    validationErrors.push(
+      `Price must be higher than base price (${formatPrice(basePrice)})`
+    );
+  }
+  if (error) {
+    validationErrors.push(error);
+  }
+
+  const canSave = validationErrors.length === 0;
 
   const handleImageUpload = useCallback(async (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -229,16 +262,25 @@ export default function VariantEditModal({
       {/* Modal */}
       <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="px-6 py-3 border-b border-neutral-100 flex items-center justify-between">
-          <h2 className="text-base font-medium text-neutral-700">
-            Edit Variant
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors"
-          >
-            <X className="h-4 w-4" />
-          </button>
+        <div className="px-6 py-3 border-b border-neutral-100">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-medium text-neutral-700">
+              Edit Variant
+            </h2>
+            <button
+              onClick={onClose}
+              className="p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          {/* Validation Errors */}
+          {validationErrors.length > 0 && (
+            <div className="flex items-center gap-2 mt-2 text-sm text-red-600">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              <span>{validationErrors.join(" • ")}</span>
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -516,12 +558,33 @@ export default function VariantEditModal({
             </div>
           )}
 
-          {/* Error */}
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-600">{error}</p>
+          {/* Danger Zone */}
+          <div className="border border-red-200 rounded-xl overflow-hidden">
+            <div className="px-4 py-3 bg-red-50 border-b border-red-200">
+              <h3 className="font-medium text-red-900 text-sm">Danger Zone</h3>
             </div>
-          )}
+            <div className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-neutral-900 text-sm">
+                      Delete Variant
+                    </p>
+                    <p className="text-xs text-neutral-500 mt-0.5">
+                      Permanently delete this variant. This cannot be undone.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="px-3 py-1.5 text-sm font-medium text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Footer */}
@@ -534,7 +597,7 @@ export default function VariantEditModal({
           </button>
           <button
             onClick={handleSave}
-            disabled={isSaving || isUploadingImage}
+            disabled={!canSave || isSaving || isUploadingImage}
             className="px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 disabled:bg-neutral-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
           >
             {isSaving ? (
@@ -548,6 +611,20 @@ export default function VariantEditModal({
           </button>
         </div>
       </div>
+
+      {/* Delete Variant Modal */}
+      {showDeleteModal && (
+        <DeleteVariantModal
+          variantId={variant.id}
+          variantTitle={variant.title || "Untitled Variant"}
+          onClose={() => setShowDeleteModal(false)}
+          onDeleted={() => {
+            setShowDeleteModal(false);
+            onClose();
+            onDeleted?.();
+          }}
+        />
+      )}
     </div>
   );
 }

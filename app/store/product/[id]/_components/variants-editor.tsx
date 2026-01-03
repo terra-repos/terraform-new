@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { ImageIcon, Edit2, Check, AlertCircle } from "lucide-react";
+import { ImageIcon, Edit2, Check, AlertCircle, Sparkles } from "lucide-react";
 import { type ProductWithRelations } from "../page";
 import { Database } from "@/types/database";
 import VariantEditModal from "./variant-edit-modal";
+import AIVariantsModal from "./ai-variants-modal";
 
 type ProductVariant = Database["public"]["Tables"]["product_variants"]["Row"];
 type OptionValue = Database["public"]["Tables"]["option_values"]["Row"];
@@ -75,6 +76,7 @@ export default function VariantsEditor({
   const [editingVariant, setEditingVariant] = useState<ProductVariant | null>(
     null
   );
+  const [showAIModal, setShowAIModal] = useState(false);
 
   const variants = product.product_variants || [];
 
@@ -117,8 +119,15 @@ export default function VariantsEditor({
   return (
     <>
       <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-neutral-200">
+        <div className="px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
           <h2 className="text-lg font-medium text-neutral-900">Variants</h2>
+          <button
+            onClick={() => setShowAIModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+          >
+            <Sparkles className="h-4 w-4" />
+            Edit with AI
+          </button>
         </div>
 
         <div className="p-6">
@@ -299,6 +308,22 @@ export default function VariantsEditor({
           product={product}
           onClose={() => setEditingVariant(null)}
           onSave={handleVariantUpdate}
+          onDeleted={() => {
+            // Trigger a page refresh to get updated product data
+            window.location.reload();
+          }}
+        />
+      )}
+
+      {/* AI Variants Modal */}
+      {showAIModal && (
+        <AIVariantsModal
+          product={product}
+          onClose={() => setShowAIModal(false)}
+          onSuccess={() => {
+            // Trigger a page refresh to get updated product data
+            window.location.reload();
+          }}
         />
       )}
     </>

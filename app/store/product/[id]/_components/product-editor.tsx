@@ -22,7 +22,7 @@ export default function ProductEditor({ product }: ProductEditorProps) {
     <div className="min-h-full bg-neutral-50">
       {/* Header */}
       <div className="bg-white border-b border-neutral-200">
-        <div className="max-w-5xl mx-auto px-6 py-4">
+        <div className="max-w-8xl mx-auto px-6 py-4">
           <div className="flex items-center gap-4">
             <Link
               href="/store"
@@ -40,34 +40,42 @@ export default function ProductEditor({ product }: ProductEditorProps) {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
-        {/* Product Info */}
-        <ProductInfoSection
-          product={currentProduct}
-          onUpdate={setCurrentProduct}
-        />
+      {/* Content - Two Column Layout */}
+      <div className="max-w-8xl mx-auto px-6 py-8">
+        <div className="flex gap-8">
+          {/* Left Column - Main Content */}
+          <div className="flex-1 space-y-8">
+            {/* Product Info */}
+            <ProductInfoSection
+              product={currentProduct}
+              onUpdate={setCurrentProduct}
+            />
 
-        {/* Options */}
-        <OptionsEditor
-          product={currentProduct}
-          onUpdate={setCurrentProduct}
-        />
+            {/* Options */}
+            <OptionsEditor
+              product={currentProduct}
+              onUpdate={setCurrentProduct}
+            />
 
-        {/* Variants */}
-        <VariantsEditor
-          product={currentProduct}
-          onUpdate={setCurrentProduct}
-        />
+            {/* Variants */}
+            <VariantsEditor
+              product={currentProduct}
+              onUpdate={setCurrentProduct}
+            />
+          </div>
 
-        {/* Analytics */}
-        <AnalyticsSection productId={currentProduct.id} />
+          {/* Right Column - Analytics & Settings */}
+          <div className="w-80 flex-shrink-0 space-y-6">
+            {/* Analytics */}
+            <AnalyticsSection productId={currentProduct.id} />
 
-        {/* Danger Zone */}
-        <DangerZoneSection
-          productId={currentProduct.id}
-          productTitle={currentProduct.title || "Untitled Product"}
-        />
+            {/* Danger Zone */}
+            <DangerZoneSection
+              productId={currentProduct.id}
+              productTitle={currentProduct.title || "Untitled Product"}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

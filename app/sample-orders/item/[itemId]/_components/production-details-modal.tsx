@@ -24,34 +24,36 @@ export default function ProductionDetailsModal({
 }: ProductionDetailsModalProps) {
   if (!open) return null;
 
-  // Sample Cost: same as before (variant price)
-  const sampleCost = item.price;
+  // Find the selected sample manufacturer (is_selected_for_customer = true)
+  const selectedManufacturer = item.sample_manufacturers.find(
+    (sm) => sm.is_selected_for_customer === true
+  );
 
-  // Production Quote: product_variants.price
+  // Sample Cost: sample_price from the selected sample_manufacturer
+  const sampleCost = selectedManufacturer?.sample_price ?? null;
+
+  // Production Quote: variant.price
   const productionQuote = item.price;
 
-  // Shipping Estimate: ocean_shipping_cost only
+  // Shipping Estimate: variant.ocean_shipping_cost
   const shippingEstimate = item.ocean_shipping_cost;
 
-  // Our Margin: distance between price and cost_price (factory_price)
-  const margin =
-    productionQuote && productionQuote > 0 && item.factory_price && item.factory_price > 0
-      ? productionQuote - item.factory_price
-      : null;
+  // Our Margin: fixed 20%
+  const marginPercent = 20;
 
-  // Base Price Estimate: price + ocean_shipping_cost
+  // Base Price: variant.price + variant.ocean_shipping_cost
   const basePrice =
     productionQuote && productionQuote > 0 && shippingEstimate && shippingEstimate > 0
       ? productionQuote + shippingEstimate
       : null;
 
-  // Suggested Retail: Base * 1.3
+  // Suggested Retail: base price * 1.3
   const suggestedRetail = basePrice ? basePrice * 1.3 : null;
 
   // Profit per Sale: Retail - Base
   const profitPerSale = suggestedRetail && basePrice ? suggestedRetail - basePrice : null;
 
-  const hasPricing = sampleCost && sampleCost > 0;
+  const hasPricing = productionQuote && productionQuote > 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -90,12 +92,14 @@ export default function ProductionDetailsModal({
               </p>
             ) : (
               <div className="space-y-3">
-                <div className="flex justify-between py-2">
-                  <span className="text-neutral-600">Sample Cost:</span>
-                  <span className="font-medium text-neutral-900">
-                    {item.quantity} x {formatPrice(sampleCost)}
-                  </span>
-                </div>
+                {sampleCost !== null && (
+                  <div className="flex justify-between py-2">
+                    <span className="text-neutral-600">Sample Cost:</span>
+                    <span className="font-medium text-neutral-900">
+                      {item.quantity} x {formatPrice(sampleCost)}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between py-2">
                   <span className="text-neutral-600">Production Quote:</span>
                   <span className="font-medium text-neutral-900">
@@ -103,9 +107,9 @@ export default function ProductionDetailsModal({
                   </span>
                 </div>
                 <div className="flex justify-between py-2">
-                  <span className="text-neutral-600">Our Margin (i):</span>
+                  <span className="text-neutral-600">Our Margin:</span>
                   <span className="font-medium text-neutral-900">
-                    {formatPrice(margin)}
+                    {marginPercent}%
                   </span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-neutral-200">
@@ -115,7 +119,7 @@ export default function ProductionDetailsModal({
                   </span>
                 </div>
                 <div className="flex justify-between py-2">
-                  <span className="text-neutral-600">Base Price Estimate:</span>
+                  <span className="text-neutral-600">Base Price:</span>
                   <span className="font-medium text-neutral-900">
                     {formatPrice(basePrice)}
                   </span>

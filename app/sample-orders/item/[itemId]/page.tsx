@@ -54,6 +54,7 @@ export type SampleManufacturer = {
   sample_price: number | null;
   eta: string | null;
   arrived_at_forwarder: boolean | null;
+  is_selected_for_customer: boolean | null;
 };
 
 export type CommThreadAction = {
@@ -173,6 +174,10 @@ export type OrderItemDetail = {
   pending_actions: TimelineCommunication[];
   // Comm thread action (when thread status is awaiting_client)
   comm_thread_action: CommThreadAction | null;
+  // Whether the sample is finalized (has is_selected_for_customer = true)
+  is_finalized: boolean;
+  // Whether the product is already in a store
+  is_in_store: boolean;
 };
 
 async function getOrderItemDetail(
@@ -231,7 +236,8 @@ async function getOrderItemDetail(
           id,
           title,
           thumbnail_image,
-          important_details
+          important_details,
+          store_id
         )
       )
     `
@@ -267,6 +273,7 @@ async function getOrderItemDetail(
       title: string | null;
       thumbnail_image: string | null;
       important_details: unknown[] | null;
+      store_id: string | null;
     };
   };
 
@@ -377,7 +384,7 @@ async function getOrderItemDetail(
   // Fetch sample manufacturers for this order item
   const { data: sampleManufacturers } = await supabase
     .from("sample_manufacturers")
-    .select("id, status, factory_id, sample_price, eta, arrived_at_forwarder")
+    .select("id, status, factory_id, sample_price, eta, arrived_at_forwarder, is_selected_for_customer")
     .eq("order_item_id", itemId);
 
   // Transform sample manufacturers
@@ -390,7 +397,16 @@ async function getOrderItemDetail(
     factory_id: sm.factory_id,
     sample_price: sm.sample_price,
     eta: sm.eta,
+    is_selected_for_customer: sm.is_selected_for_customer,
   }));
+
+  // Check if sample is finalized (any manufacturer has is_selected_for_customer = true)
+  const isFinalized = transformedSampleManufacturers.some(
+    (sm) => sm.is_selected_for_customer === true
+  );
+
+  // Check if product is already in a store
+  const isInStore = product.store_id !== null;
 
   // Compute display status from sample manufacturers
   const displayStatus = getFurthestStatus(
@@ -468,6 +484,8 @@ async function getOrderItemDetail(
     display_status: displayStatus,
     pending_actions: pendingActions,
     comm_thread_action: commThreadAction,
+    is_finalized: isFinalized,
+    is_in_store: isInStore,
   };
 }
 

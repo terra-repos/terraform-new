@@ -17,7 +17,8 @@ export type StoreProduct = {
   id: string;
   title: string | null;
   thumbnail_image: string | null;
-  price: number | null;
+  drop_custom_price: number | null;
+  profit_per_unit: number | null;
 };
 
 type Tab = "products" | "sales" | "traffic";
@@ -165,12 +166,28 @@ function ProductsTab({ products }: { products: StoreProduct[] }) {
             </div>
             {/* Info */}
             <div className="p-4">
-              <h3 className="font-medium text-neutral-900 mb-1 line-clamp-2">
+              <h3 className="font-medium text-neutral-900 mb-2 line-clamp-2">
                 {product.title || "Untitled Product"}
               </h3>
-              <p className="text-orange-600 font-medium">
-                {formatPrice(product.price)}
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-orange-600 font-medium">
+                  {formatPrice(product.drop_custom_price)}
+                </p>
+                {product.profit_per_unit !== null && (
+                  <p
+                    className={`text-sm font-medium ${
+                      product.profit_per_unit > 0
+                        ? "text-green-600"
+                        : product.profit_per_unit < 0
+                        ? "text-red-600"
+                        : "text-neutral-400"
+                    }`}
+                  >
+                    {product.profit_per_unit > 0 ? "+" : ""}
+                    {formatPrice(product.profit_per_unit)}
+                  </p>
+                )}
+              </div>
             </div>
           </Link>
         ))}

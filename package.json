@@ -3,6 +3,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:prod": "USE_PROD=true dotenv -e .env.production -- next dev",
+    "login": "gcloud auth application-default login",
     "gen-types": "supabase gen types typescript --project-id ezaatwiaxizvxzjwrgly --schema public > types/database.ts",
     "build": "next build",
     "start": "next start",

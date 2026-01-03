@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { ImageIcon, Loader2, Check, X, Camera } from "lucide-react";
 import { type ProductWithRelations } from "../page";
 import { updateProduct } from "@/app/actions/store/update-product";
@@ -30,8 +30,6 @@ export default function ProductInfoSection({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [title, setTitle] = useState(product.title || "");
-  const [slug, setSlug] = useState(product.slug || "");
-  const [slugManuallyEdited, setSlugManuallyEdited] = useState(!!product.slug);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(
     product.thumbnail_image
   );
@@ -44,24 +42,15 @@ export default function ProductInfoSection({
   );
   const [error, setError] = useState<string | null>(null);
 
+  // Auto-generate slug from title
+  const slug = title ? slugify(title) : "";
+
   // Track if there are unsaved changes
   const hasChanges =
     title !== (product.title || "") ||
     slug !== (product.slug || "") ||
     thumbnailPreview !== product.thumbnail_image ||
     bodyHtml !== (product.body_html || "");
-
-  // Auto-slugify title if not manually edited
-  useEffect(() => {
-    if (!slugManuallyEdited && title) {
-      setSlug(slugify(title));
-    }
-  }, [title, slugManuallyEdited]);
-
-  const handleSlugChange = (value: string) => {
-    setSlugManuallyEdited(true);
-    setSlug(slugify(value));
-  };
 
   const handleImageSelect = useCallback(
     async (file: File) => {
@@ -223,7 +212,7 @@ export default function ProductInfoSection({
               />
             </div>
 
-            {/* Slug */}
+            {/* Slug (auto-generated from title) */}
             <div>
               <label
                 htmlFor="productSlug"
@@ -237,12 +226,14 @@ export default function ProductInfoSection({
                   id="productSlug"
                   type="text"
                   value={slug}
-                  onChange={(e) => handleSlugChange(e.target.value)}
+                  readOnly
                   placeholder="product-slug"
-                  maxLength={100}
-                  className="flex-1 px-4 py-2.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+                  className="flex-1 px-4 py-2.5 border border-neutral-200 rounded-lg bg-neutral-50 text-neutral-600 cursor-not-allowed"
                 />
               </div>
+              <p className="mt-1 text-xs text-neutral-500">
+                Auto-generated from title
+              </p>
             </div>
           </div>
         </div>

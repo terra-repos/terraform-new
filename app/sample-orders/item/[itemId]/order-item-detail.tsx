@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Store } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { OrderItemDetail as OrderItemDetailType } from "./page";
 import ImageGallery from "./_components/image-gallery";
 import StatusSummary from "./_components/status-summary";
 import ActionItems from "./_components/action-items";
 import ProductionDetailsModal from "./_components/production-details-modal";
+import AddToStoreModal from "./_components/add-to-store-modal";
 
 const STATUS_STYLES: Record<
   string,
@@ -130,6 +131,7 @@ type OrderItemDetailProps = {
 export default function OrderItemDetail({ item }: OrderItemDetailProps) {
   const router = useRouter();
   const [showProductionDetails, setShowProductionDetails] = useState(false);
+  const [showAddToStore, setShowAddToStore] = useState(false);
 
   // Use display_status (computed from sample_manufacturers) for the status badge
   const statusStyle = getStatusStyle(item.display_status);
@@ -175,21 +177,34 @@ export default function OrderItemDetail({ item }: OrderItemDetailProps) {
               </div>
             </div>
 
-            {/* Track button - shown when shipped */}
-            {item.display_status === "shipped" && (
-              <a
-                href={
-                  process.env.NODE_ENV === "development"
-                    ? `https://tracking-superstar.useterra.com/track/order/${item.order_id}`
-                    : `https://tracking.useterra.com/track/order/${item.order_id}`
-                }
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors"
-              >
-                Track
-              </a>
-            )}
+            <div className="flex items-center gap-3">
+              {/* Add to Store button - shown when finalized and not already in store */}
+              {item.is_finalized && !item.is_in_store && (
+                <button
+                  onClick={() => setShowAddToStore(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors"
+                >
+                  <Store className="h-4 w-4" />
+                  Add to Store
+                </button>
+              )}
+
+              {/* Track button - shown when shipped */}
+              {item.display_status === "shipped" && (
+                <a
+                  href={
+                    process.env.NODE_ENV === "development"
+                      ? `https://tracking-superstar.useterra.com/track/order/${item.order_id}`
+                      : `https://tracking.useterra.com/track/order/${item.order_id}`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-neutral-800 text-white rounded-lg text-sm font-medium hover:bg-neutral-900 transition-colors"
+                >
+                  Track
+                </a>
+              )}
+            </div>
           </div>
 
           {/* Progress bar */}
@@ -291,6 +306,20 @@ export default function OrderItemDetail({ item }: OrderItemDetailProps) {
         onClose={() => setShowProductionDetails(false)}
         item={item}
       />
+
+      {showAddToStore && (
+        <AddToStoreModal
+          productId={item.product_id}
+          variantId={item.variant_id}
+          productTitle={item.product_title}
+          productThumbnail={item.product_thumbnail}
+          variantTitle={item.variant_title}
+          variantImages={item.variant_images}
+          price={item.price}
+          oceanShippingCost={item.ocean_shipping_cost}
+          onClose={() => setShowAddToStore(false)}
+        />
+      )}
     </>
   );
 }
