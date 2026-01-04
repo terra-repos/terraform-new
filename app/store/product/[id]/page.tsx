@@ -81,5 +81,24 @@ export default async function ProductEditorPage({ params }: PageProps) {
     notFound();
   }
 
-  return <ProductEditor product={product} />;
+  // Get organization ID for analytics
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let organizationId = "";
+  if (user) {
+    const { data: orgMember } = await supabase
+      .from("organization_members")
+      .select("organization_id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (orgMember) {
+      organizationId = orgMember.organization_id;
+    }
+  }
+
+  return <ProductEditor product={product} organizationId={organizationId} />;
 }

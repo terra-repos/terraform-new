@@ -97,7 +97,7 @@ export default function LandingPageClient() {
                     setError(error.message || "Failed to sign in");
                     setLoading(false);
                   } else {
-                    router.push("/home");
+                    router.push("/design");
                     router.refresh();
                   }
                 } catch (err: any) {

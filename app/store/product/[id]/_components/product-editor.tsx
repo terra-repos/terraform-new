@@ -12,9 +12,13 @@ import DangerZoneSection from "./danger-zone-section";
 
 type ProductEditorProps = {
   product: ProductWithRelations;
+  organizationId: string;
 };
 
-export default function ProductEditor({ product }: ProductEditorProps) {
+export default function ProductEditor({
+  product,
+  organizationId,
+}: ProductEditorProps) {
   const [currentProduct, setCurrentProduct] =
     useState<ProductWithRelations>(product);
 
@@ -67,7 +71,10 @@ export default function ProductEditor({ product }: ProductEditorProps) {
           {/* Right Column - Analytics & Settings */}
           <div className="w-80 flex-shrink-0 space-y-6">
             {/* Analytics */}
-            <AnalyticsSection productId={currentProduct.id} />
+            <AnalyticsSection
+              productId={currentProduct.id}
+              organizationId={organizationId}
+            />
 
             {/* Danger Zone */}
             <DangerZoneSection

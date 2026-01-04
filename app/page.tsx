@@ -10,7 +10,7 @@ export default async function HomePage() {
 
   // Redirect authenticated users to /home immediately
   if (user) {
-    redirect("/home");
+    redirect("/design");
   }
 
   // Only render landing page for unauthenticated users

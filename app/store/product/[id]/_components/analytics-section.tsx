@@ -1,34 +1,72 @@
 "use client";
 
-import { BarChart3, Eye, ShoppingCart, DollarSign } from "lucide-react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { BarChart3, DollarSign, TrendingUp, ExternalLink } from "lucide-react";
+import { getProductAnalytics } from "@/app/actions/store/get-product-analytics";
 
 type AnalyticsSectionProps = {
   productId: string;
+  organizationId: string;
 };
 
-export default function AnalyticsSection({ productId }: AnalyticsSectionProps) {
-  // Placeholder analytics data - will be replaced with real data later
-  const metrics = [
+export default function AnalyticsSection({
+  productId,
+  organizationId,
+}: AnalyticsSectionProps) {
+  const [loading, setLoading] = useState(true);
+  const [metrics, setMetrics] = useState({
+    totalRevenue: 0,
+    totalProfit: 0,
+  });
+
+  useEffect(() => {
+    async function fetchAnalytics() {
+      setLoading(true);
+      const data = await getProductAnalytics(productId, organizationId);
+
+      if (data && data.orderItems) {
+        const totalRevenue = data.orderItems.reduce(
+          (sum, item) => sum + (item.total_price || 0),
+          0
+        );
+        const totalProfit = data.orderItems.reduce(
+          (sum, item) => sum + (item.profit || 0),
+          0
+        );
+
+        setMetrics({
+          totalRevenue,
+          totalProfit,
+        });
+      }
+      setLoading(false);
+    }
+
+    fetchAnalytics();
+  }, [productId, organizationId]);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount);
+  };
+
+  const metricsData = [
     {
-      label: "Views",
-      value: "—",
-      icon: Eye,
-      color: "text-blue-500",
-      bgColor: "bg-blue-50",
-    },
-    {
-      label: "Add to Cart",
-      value: "—",
-      icon: ShoppingCart,
-      color: "text-green-500",
-      bgColor: "bg-green-50",
-    },
-    {
-      label: "Revenue",
-      value: "—",
+      label: "Total Revenue",
+      value: loading ? "—" : formatCurrency(metrics.totalRevenue),
       icon: DollarSign,
-      color: "text-purple-500",
-      bgColor: "bg-purple-50",
+      color: "text-orange-600",
+      bgColor: "bg-orange-50",
+    },
+    {
+      label: "Total Profit",
+      value: loading ? "—" : formatCurrency(metrics.totalProfit),
+      icon: TrendingUp,
+      color: "text-green-600",
+      bgColor: "bg-green-50",
     },
   ];
 
@@ -39,14 +77,11 @@ export default function AnalyticsSection({ productId }: AnalyticsSectionProps) {
           <BarChart3 className="h-5 w-5 text-neutral-500" />
           <h2 className="text-lg font-medium text-neutral-900">Analytics</h2>
         </div>
-        <span className="text-xs bg-neutral-100 text-neutral-500 px-2 py-1 rounded-full">
-          Coming Soon
-        </span>
       </div>
 
       <div className="p-6">
-        <div className="grid grid-cols-3 gap-4">
-          {metrics.map((metric) => (
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          {metricsData.map((metric) => (
             <div
               key={metric.label}
               className="p-4 bg-neutral-50 rounded-lg text-center"
@@ -64,10 +99,13 @@ export default function AnalyticsSection({ productId }: AnalyticsSectionProps) {
           ))}
         </div>
 
-        <p className="text-center text-sm text-neutral-500 mt-4">
-          Product analytics will be available soon. Track views, conversions,
-          and revenue for this product.
-        </p>
+        <Link
+          href={`/store/product/${productId}/analytics`}
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium w-full"
+        >
+          View Detailed Analytics
+          <ExternalLink className="h-4 w-4" />
+        </Link>
       </div>
     </div>
   );

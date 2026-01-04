@@ -40,8 +40,14 @@ async function getStoreProducts(storeId: string): Promise<StoreProduct[]> {
   console.log("=== Store Products Debug ===");
   console.log("Store ID:", storeId);
   console.log("All products count:", allProducts?.length || 0);
-  console.log("Products with deleted_at set:", allProducts?.filter(p => p.deleted_at !== null).length || 0);
-  console.log("Products with deleted_at null:", allProducts?.filter(p => p.deleted_at === null).length || 0);
+  console.log(
+    "Products with deleted_at set:",
+    allProducts?.filter((p) => p.deleted_at !== null).length || 0
+  );
+  console.log(
+    "Products with deleted_at null:",
+    allProducts?.filter((p) => p.deleted_at === null).length || 0
+  );
   if (allError) console.log("Error:", allError);
 
   const { data: products } = await supabase
@@ -66,12 +72,18 @@ async function getStoreProducts(storeId: string): Promise<StoreProduct[]> {
   console.log("Filtered products count:", products?.length || 0);
 
   // Debug: check products with/without variants
-  const productsWithVariants = products?.filter(p => (p.product_variants as unknown[])?.length > 0) || [];
-  const productsWithoutVariants = products?.filter(p => !(p.product_variants as unknown[])?.length) || [];
+  const productsWithVariants =
+    products?.filter((p) => (p.product_variants as unknown[])?.length > 0) ||
+    [];
+  const productsWithoutVariants =
+    products?.filter((p) => !(p.product_variants as unknown[])?.length) || [];
   console.log("Products with variants:", productsWithVariants.length);
   console.log("Products without variants:", productsWithoutVariants.length);
   if (productsWithoutVariants.length > 0) {
-    console.log("Products missing variants:", productsWithoutVariants.map(p => ({ id: p.id, title: p.title })));
+    console.log(
+      "Products missing variants:",
+      productsWithoutVariants.map((p) => ({ id: p.id, title: p.title }))
+    );
   }
 
   if (!products) return [];
@@ -106,6 +118,23 @@ async function getStoreProducts(storeId: string): Promise<StoreProduct[]> {
 }
 
 export default async function StorePage() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  // Get organization
+  const { data: orgMember } = await supabase
+    .from("organization_members")
+    .select("organization_id")
+    .eq("user_id", user.id)
+    .single();
+
   const store = await getStore();
 
   if (!store) {
@@ -114,5 +143,28 @@ export default async function StorePage() {
 
   const products = await getStoreProducts(store.id);
 
-  return <StoreDashboard store={store} products={products} />;
+  // Calculate store URL based on environment
+  const baseUrl =
+    process.env.NODE_ENV === "development"
+      ? "https://drop-superstar.useterra.com"
+      : "https://drop.useterra.com";
+
+  const storeUrl = store.custom_domain || `${baseUrl}/${store.slug}`;
+
+  if (!orgMember) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-neutral-500">No organization found</p>
+      </div>
+    );
+  }
+
+  return (
+    <StoreDashboard
+      store={store}
+      products={products}
+      organizationId={orgMember.organization_id}
+      storeUrl={storeUrl}
+    />
+  );
 }
