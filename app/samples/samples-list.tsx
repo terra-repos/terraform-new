@@ -86,7 +86,9 @@ export default function SamplesList({ items }: SamplesListProps) {
         router.push("/sample-orders");
         router.refresh(); // Refresh to update sidebar unlock state
       } else {
-        alert(result.error || "Failed to submit sample requests. Please try again.");
+        alert(
+          result.error || "Failed to submit sample requests. Please try again."
+        );
       }
     } catch {
       alert("An error occurred. Please try again.");
@@ -260,20 +262,15 @@ export default function SamplesList({ items }: SamplesListProps) {
       <div className="w-full min-h-full bg-neutral-50">
         <div className="w-full max-w-7xl mx-auto px-6 py-8">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <button
-              onClick={() => router.back()}
-              className="p-2 hover:bg-neutral-200 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="h-5 w-5 text-neutral-600" />
-            </button>
-
+          <div className="flex items-center justify-end mb-8">
             <button
               onClick={handleSubmitSampleRequests}
               disabled={isSubmittingOrder || localItems.length === 0}
               className="px-6 py-2.5 bg-neutral-900 text-white text-sm font-medium rounded-full hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              {isSubmittingOrder && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isSubmittingOrder && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
               {isSubmittingOrder ? "Submitting..." : "Submit Sample requests"}
             </button>
           </div>
@@ -295,10 +292,10 @@ export default function SamplesList({ items }: SamplesListProps) {
                   {showPricingInfo && (
                     <>
                       <div
-                        className="fixed inset-0 z-40"
+                        className="fixed inset-0 z-[100]"
                         onClick={() => setShowPricingInfo(false)}
                       />
-                      <div className="absolute right-1/2 top-6 z-50 w-80 bg-white rounded-xl shadow-xl border border-neutral-200 p-4">
+                      <div className="fixed right-16 top-32 z-[101] w-80 bg-white rounded-xl shadow-xl border border-neutral-200 p-4">
                         <h4 className="font-semibold text-neutral-900 mb-3">
                           Estimated Sample Pricing Details
                         </h4>

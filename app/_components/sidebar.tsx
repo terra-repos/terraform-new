@@ -45,7 +45,10 @@ function timeAgo(iso?: string | null) {
   return `${days}d ago`;
 }
 
-const getNavItems = (hasSampleOrders: boolean, hasDeliveredOrder: boolean): NavItem[] => [
+const getNavItems = (
+  hasSampleOrders: boolean,
+  hasDeliveredOrder: boolean
+): NavItem[] => [
   {
     label: "Design",
     icon: Palette,
@@ -208,7 +211,7 @@ type SidebarProps = {
 };
 
 export default function Sidebar({
-  isOpen = true,
+  isOpen = false,
   onToggle,
   onProfilePage,
   user,
@@ -373,8 +376,14 @@ export default function Sidebar({
   );
 
   // Notifications content component
-  const NotificationsContent = ({ isMobile = false }: { isMobile?: boolean }) => {
-    const handleNotificationClick = (notification: (typeof notifications)[0]) => {
+  const NotificationsContent = ({
+    isMobile = false,
+  }: {
+    isMobile?: boolean;
+  }) => {
+    const handleNotificationClick = (
+      notification: (typeof notifications)[0]
+    ) => {
       markAsRead(notification.id);
       setNotificationsMode(false);
       if (isMobile) setMobileMenuOpen(false);
@@ -618,10 +627,10 @@ export default function Sidebar({
       )}
 
       {/* Desktop Sidebar - hidden on mobile */}
-      {/* Floating open button - visible when collapsed */}
+      {/* Floating open button - visible when collapsed, hidden on root page */}
       <div
         className={`hidden md:block fixed top-5 left-3 z-50 transition-all duration-300 ease-in-out ${
-          isOpen
+          isOpen || pathname === "/"
             ? "opacity-0 pointer-events-none -translate-x-4"
             : "opacity-100 pointer-events-auto translate-x-0"
         }`}

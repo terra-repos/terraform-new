@@ -12,6 +12,7 @@ import { google } from "@ai-sdk/google";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { uploadImage } from "@/app/actions/uploads/uploadImage";
+import { createClient } from "@/lib/supabase/server";
 
 export const maxDuration = 60;
 
@@ -155,10 +156,37 @@ export async function POST(req: Request) {
   const {
     messages,
     imageModel = "gemini",
+    catalogItemId,
   }: {
     messages: UIMessage[];
     imageModel?: "gemini" | "gpt";
+    catalogItemId?: string;
   } = await req.json();
+
+  // Fetch catalog item context if catalogItemId is provided
+  let catalogContext = "";
+  if (catalogItemId) {
+    const supabase = await createClient();
+    const { data: catalogItem } = await supabase
+      .from("temp_catalog_items")
+      .select("*")
+      .eq("id", catalogItemId)
+      .single();
+
+    if (catalogItem) {
+      catalogContext = `
+
+CATALOG ITEM CONTEXT:
+The user is customizing a catalog item with these details:
+- Category: ${catalogItem.category || "N/A"}
+- Material: ${catalogItem.materials || "N/A"}
+- Dimensions: ${catalogItem.dimension || "N/A"}
+- Details: ${catalogItem.extra_details || "N/A"}
+- Reference Image: ${catalogItem.image_url || "N/A"}
+
+When generating designs, use this as the baseline and apply the user's requested modifications.`;
+    }
+  }
 
   // Keep original messages for tool access (via closure)
   const originalMessages = messages;
@@ -172,6 +200,7 @@ export async function POST(req: Request) {
   const result = streamText({
     model: anthropic("claude-sonnet-4-20250514"),
     system: `You are an expert product designer assistant. Help users customize and iterate on their product designs.
+${catalogContext}
 
 ${catalogText}
 

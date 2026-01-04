@@ -10,6 +10,7 @@ import {
   LayoutGrid,
   List,
   ArrowUpDown,
+  MessageCircle,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import type { SampleOrderItem, SampleOrder } from "./page";
@@ -20,7 +21,11 @@ type SampleOrdersListProps = {
 };
 
 type ViewMode = "items" | "orders";
-type SortOption = "newest" | "oldest" | "order_number_asc" | "order_number_desc";
+type SortOption =
+  | "newest"
+  | "oldest"
+  | "order_number_asc"
+  | "order_number_desc";
 
 const STATUS_OPTIONS = [
   { value: "all", label: "All Statuses" },
@@ -209,7 +214,14 @@ export default function SampleOrdersList({
     });
 
     return result;
-  }, [orders, searchQuery, statusFilter, hideCompleted, hideCancelled, sortOption]);
+  }, [
+    orders,
+    searchQuery,
+    statusFilter,
+    hideCompleted,
+    hideCancelled,
+    sortOption,
+  ]);
 
   if (items.length === 0) {
     return (
@@ -237,33 +249,39 @@ export default function SampleOrdersList({
     <div className="w-full min-h-full bg-neutral-50">
       <div className="w-full max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-neutral-900">Samples</h1>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-neutral-900 text-center mb-4">
+            Samples
+          </h1>
 
-          {/* View Toggle */}
-          <div className="flex items-center gap-1 p-1 bg-neutral-100 rounded-lg">
-            <button
-              onClick={() => setViewMode("items")}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                viewMode === "items"
-                  ? "bg-white text-neutral-900 shadow-sm"
-                  : "text-neutral-600 hover:text-neutral-900"
-              }`}
-            >
-              <LayoutGrid className="h-4 w-4" />
-              Items
-            </button>
-            <button
-              onClick={() => setViewMode("orders")}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                viewMode === "orders"
-                  ? "bg-white text-neutral-900 shadow-sm"
-                  : "text-neutral-600 hover:text-neutral-900"
-              }`}
-            >
-              <List className="h-4 w-4" />
-              Orders
-            </button>
+          <div className="flex items-center justify-center gap-3">
+            {/* Ask Question Button */}
+
+            {/* View Toggle */}
+            <div className="flex items-center gap-1 p-1 bg-neutral-100 rounded-lg">
+              <button
+                onClick={() => setViewMode("items")}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === "items"
+                    ? "bg-white text-neutral-900 shadow-sm"
+                    : "text-neutral-600 hover:text-neutral-900"
+                }`}
+              >
+                <LayoutGrid className="h-4 w-4" />
+                Items
+              </button>
+              <button
+                onClick={() => setViewMode("orders")}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === "orders"
+                    ? "bg-white text-neutral-900 shadow-sm"
+                    : "text-neutral-600 hover:text-neutral-900"
+                }`}
+              >
+                <List className="h-4 w-4" />
+                Orders
+              </button>
+            </div>
           </div>
         </div>
 
@@ -501,8 +519,7 @@ export default function SampleOrdersList({
                           {order.order_number}
                         </h3>
                         <p className="text-sm text-neutral-500">
-                          {formatDate(order.created_at)} •{" "}
-                          {order.items.length}{" "}
+                          {formatDate(order.created_at)} • {order.items.length}{" "}
                           {order.items.length === 1 ? "item" : "items"}
                         </p>
                       </div>

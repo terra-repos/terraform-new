@@ -15,12 +15,17 @@ import {
 import { uploadImage } from "../../actions/uploads/uploadImage";
 import FinalizeModal from "@/components/finalize-modal";
 import { finalizeDesign } from "@/app/actions/designs/finalize-design";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { getCatalogItem } from "@/app/actions/catalog/get-catalog-item";
+import { parseDimensionString } from "@/lib/utils/parse-dimensions";
 
 const cn = (...classes: (string | boolean | undefined)[]) =>
   classes.filter(Boolean).join(" ");
 
 export default function DesignChat() {
+  const searchParams = useSearchParams();
+  const catalogItemId = searchParams.get("fromCatalog");
+
   const [input, setInput] = useState("");
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -49,6 +54,7 @@ export default function DesignChat() {
     useState(false);
   const [isSubmittingSample, setIsSubmittingSample] = useState(false);
   const [selectedImageModel, setSelectedImageModel] = useState<"gemini" | "gpt">("gemini");
+  const [tempCatalogItemId, setTempCatalogItemId] = useState<string | null>(null);
 
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -61,6 +67,7 @@ export default function DesignChat() {
       api: "/api/design/chat",
       body: () => ({
         imageModel: selectedImageModel,
+        catalogItemId: catalogItemId || undefined,
       }),
     }),
   });
@@ -72,6 +79,45 @@ export default function DesignChat() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Load catalog item if fromCatalog param is present
+  useEffect(() => {
+    async function loadCatalogItem() {
+      if (!catalogItemId) return;
+
+      const result = await getCatalogItem(catalogItemId);
+      if (!result.success) {
+        console.error("Failed to load catalog item:", result.error);
+        return;
+      }
+
+      const item = result.item;
+
+      // Set catalog ID for finalize flow
+      setTempCatalogItemId(item.id);
+
+      // Pre-populate reference images and uploaded images for chat
+      if (item.image_url) {
+        setReferenceImages([item.image_url]);
+        setUploadedImages([item.image_url]);
+      }
+
+      // Pre-populate notes
+      if (item.extra_details) {
+        setNotes(item.extra_details);
+      }
+
+      // Parse and set dimensions
+      if (item.dimension) {
+        const parsed = parseDimensionString(item.dimension);
+        setDimensions(parsed.dimensions);
+        setCustomDimensions(parsed.customDimensions);
+        setCustomizations(parsed.customizationBullets);
+      }
+    }
+
+    loadCatalogItem();
+  }, [catalogItemId]);
 
   // Open finalize modal and auto-generate title
   const openFinalizeModal = async () => {
@@ -841,6 +887,7 @@ export default function DesignChat() {
         setNotes={setNotes}
         messages={messages}
         imageUrl={getCurrentImage() || ""}
+        tempCatalogItemId={tempCatalogItemId}
         isSubmitting={isSubmittingSample}
         onSaveForLater={() => setShowFinalizeModal(false)}
         onRequestSample={async (data) => {

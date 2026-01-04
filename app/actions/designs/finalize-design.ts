@@ -13,6 +13,7 @@ type FinalizeDesignInput = {
   notes: string;
   imageUrl: string;
   messages: unknown[];
+  tempCatalogItemId?: string | null;
 };
 
 type FinalizeDesignResult =
@@ -124,6 +125,20 @@ export async function finalizeDesign(
     return { success: false, error: "Not authenticated" };
   }
 
+  // Fetch catalog item if tempCatalogItemId is provided
+  let taobaoUrl: string | null = null;
+  if (data.tempCatalogItemId) {
+    const { data: catalogItem } = await supabase
+      .from("temp_catalog_items")
+      .select("taobao_url")
+      .eq("id", data.tempCatalogItemId)
+      .single();
+
+    if (catalogItem?.taobao_url) {
+      taobaoUrl = catalogItem.taobao_url;
+    }
+  }
+
   // Process with Claude to normalize dimensions and estimate price
   const { normalizedDimensions, estimatedSamplePrice } = await processWithClaude(
     {
@@ -143,6 +158,7 @@ export async function finalizeDesign(
     notes: data.notes,
     referenceImages: data.referenceImages,
     estimatedSamplePrice,
+    ...(taobaoUrl && { taobaoUrl }), // Only include if it exists
   };
 
   // Insert into user_generated_products

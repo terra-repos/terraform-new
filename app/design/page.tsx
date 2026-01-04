@@ -19,7 +19,7 @@ export default function HomePage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {/* Browse Catalog */}
           <Link
-            href="/catalog"
+            href="/design/catalog"
             className="group relative flex flex-col p-8 rounded-3xl bg-white border border-[#E5E7EB] hover:border-orange-500 hover:shadow-xl hover:shadow-orange-500/10 transition-all duration-300"
           >
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-100 text-neutral-600 mb-6 group-hover:bg-orange-500 group-hover:text-white transition-all duration-300">

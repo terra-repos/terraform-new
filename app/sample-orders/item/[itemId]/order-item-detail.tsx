@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, Store } from "lucide-react";
+import { ArrowLeft, Store, MessageCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { OrderItemDetail as OrderItemDetailType } from "./page";
 import ImageGallery from "./_components/image-gallery";
@@ -152,7 +152,7 @@ export default function OrderItemDetail({ item }: OrderItemDetailProps) {
       <div className="w-full min-h-full bg-neutral-50">
         <div className="w-full max-w-7xl mx-auto px-6 py-8">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-6 px-4">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => router.back()}
@@ -178,6 +178,15 @@ export default function OrderItemDetail({ item }: OrderItemDetailProps) {
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Ask Question Button */}
+              <button
+                onClick={() => router.push(`/sample-orders/item/${item.id}/communication`)}
+                className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors"
+              >
+                <MessageCircle className="h-4 w-4" />
+                Ask Question
+              </button>
+
               {/* Add to Store button - shown when finalized and not already in store */}
               {item.is_finalized && !item.is_in_store && (
                 <button
@@ -186,6 +195,17 @@ export default function OrderItemDetail({ item }: OrderItemDetailProps) {
                 >
                   <Store className="h-4 w-4" />
                   Add to Store
+                </button>
+              )}
+
+              {/* View in Store button - shown when product is already in a store */}
+              {item.is_in_store && (
+                <button
+                  onClick={() => router.push(`/store/product/${item.product_id}`)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
+                >
+                  <Store className="h-4 w-4" />
+                  View in Store
                 </button>
               )}
 
@@ -240,23 +260,34 @@ export default function OrderItemDetail({ item }: OrderItemDetailProps) {
                         Specifications
                       </h3>
                       <ul className="space-y-2">
-                        {item.important_details.map((detail, index) => {
-                          // Handle both string and {note: string} formats
-                          const detailText =
-                            typeof detail === "object" && detail !== null
-                              ? (detail as { note?: string }).note ||
-                                JSON.stringify(detail)
-                              : detail;
-                          return (
-                            <li
-                              key={index}
-                              className="text-sm text-neutral-600 flex items-start gap-2"
-                            >
-                              <span className="text-neutral-400">•</span>
-                              {detailText}
-                            </li>
-                          );
-                        })}
+                        {item.important_details
+                          .filter((detail) => {
+                            // Filter out Taobao URLs - check multiple patterns
+                            const detailText =
+                              typeof detail === "object" && detail !== null
+                                ? (detail as { note?: string }).note || ""
+                                : String(detail || "");
+                            const lowerText = detailText.toLowerCase();
+                            return !lowerText.includes("taobao") &&
+                                   !lowerText.includes("item.taobao.com");
+                          })
+                          .map((detail, index) => {
+                            // Handle both string and {note: string} formats
+                            const detailText =
+                              typeof detail === "object" && detail !== null
+                                ? (detail as { note?: string }).note ||
+                                  JSON.stringify(detail)
+                                : detail;
+                            return (
+                              <li
+                                key={index}
+                                className="text-sm text-neutral-600 flex items-start gap-2"
+                              >
+                                <span className="text-neutral-400">•</span>
+                                {detailText}
+                              </li>
+                            );
+                          })}
                       </ul>
                     </div>
                   )}

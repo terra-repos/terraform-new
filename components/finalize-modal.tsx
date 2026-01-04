@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { Dispatch, SetStateAction } from "react";
-import { Loader2, Plus, X } from "lucide-react";
+import { Loader2, Plus, X, Sparkles } from "lucide-react";
 
 type Dimensions = {
   length: string;
@@ -31,7 +31,9 @@ type FinalizeModalProps = {
   setNotes: Dispatch<SetStateAction<string>>;
   messages: unknown[];
   imageUrl: string;
+  tempCatalogItemId?: string | null;
   onSaveForLater?: () => void;
+  onCustomizeWithAI?: () => void;
   onRequestSample?: (data: {
     productTitle: string;
     referenceImages: string[];
@@ -41,6 +43,7 @@ type FinalizeModalProps = {
     notes: string;
     messages: unknown[];
     imageUrl: string;
+    tempCatalogItemId?: string | null;
   }) => Promise<void>;
   isSubmitting?: boolean;
 };
@@ -64,7 +67,9 @@ export default function FinalizeModal({
   setNotes,
   messages,
   imageUrl,
+  tempCatalogItemId,
   onSaveForLater,
+  onCustomizeWithAI,
   onRequestSample,
   isSubmitting = false,
 }: FinalizeModalProps) {
@@ -321,47 +326,65 @@ export default function FinalizeModal({
           </div>
         </div>
 
-        <div className="border-t border-neutral-200 px-8 py-6 flex justify-end gap-3">
-          <button
-            onClick={onSaveForLater ?? onClose}
-            className="px-6 py-3 text-sm font-medium text-neutral-700 border-2 border-orange-500 rounded-lg hover:bg-orange-50 transition-colors"
-          >
-            Save for Later
-          </button>
-          <button
-            onClick={() => {
-              onRequestSample?.({
-                productTitle,
-                referenceImages,
-                customizations,
-                dimensions,
-                customDimensions,
-                notes,
-                messages,
-                imageUrl,
-              });
-            }}
-            disabled={isDisabled}
-            className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
-              isDisabled
-                ? "bg-orange-300 text-white cursor-not-allowed"
-                : "bg-orange-500 text-white hover:bg-orange-600"
-            }`}
-          >
-            {isSubmitting ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Submitting...
-              </span>
-            ) : isGenerating ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Generating...
-              </span>
-            ) : (
-              "Request Sample"
+        <div className="border-t border-neutral-200 px-8 py-6 flex justify-between items-center">
+          {/* Left side: Customize with AI button (only for catalog items) */}
+          <div>
+            {onCustomizeWithAI && tempCatalogItemId && (
+              <button
+                onClick={onCustomizeWithAI}
+                disabled={isDisabled}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-orange-600 border border-orange-500 rounded-lg hover:bg-orange-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Sparkles className="h-4 w-4" />
+                Customize with AI
+              </button>
             )}
-          </button>
+          </div>
+
+          {/* Right side: Action buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={onSaveForLater ?? onClose}
+              className="px-6 py-3 text-sm font-medium text-neutral-700 border-2 border-orange-500 rounded-lg hover:bg-orange-50 transition-colors"
+            >
+              Save for Later
+            </button>
+            <button
+              onClick={() => {
+                onRequestSample?.({
+                  productTitle,
+                  referenceImages,
+                  customizations,
+                  dimensions,
+                  customDimensions,
+                  notes,
+                  messages,
+                  imageUrl,
+                  tempCatalogItemId,
+                });
+              }}
+              disabled={isDisabled}
+              className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${
+                isDisabled
+                  ? "bg-orange-300 text-white cursor-not-allowed"
+                  : "bg-orange-500 text-white hover:bg-orange-600"
+              }`}
+            >
+              {isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Submitting...
+                </span>
+              ) : isGenerating ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Generating...
+                </span>
+              ) : (
+                "Request Sample"
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>
