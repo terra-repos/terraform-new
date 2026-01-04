@@ -5,6 +5,7 @@ import { X, Loader2, Plus, Trash2, GripVertical, AlertCircle, AlertTriangle } fr
 import { Database } from "@/types/database";
 import { type ProductWithRelations } from "../page";
 import { updateVariant } from "@/app/actions/store/update-variant";
+import { createVariant } from "@/app/actions/store/create-variant";
 import { setVariantOptionValues } from "@/app/actions/store/manage-option-values";
 import { uploadImage } from "@/app/actions/uploads/uploadImage";
 import DeleteVariantModal from "./delete-variant-modal";
@@ -20,6 +21,7 @@ type VariantEditModalProps = {
   onClose: () => void;
   onSave: (variant: ProductVariant, optionValues?: OptionValue[]) => void;
   onDeleted?: () => void;
+  isCreatingNew?: boolean;
 };
 
 function formatPrice(price: number | null): string {
@@ -67,6 +69,7 @@ export default function VariantEditModal({
   onClose,
   onSave,
   onDeleted,
+  isCreatingNew = false,
 }: VariantEditModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -204,49 +207,101 @@ export default function VariantEditModal({
     setError(null);
 
     try {
-      // Update variant
-      const variantResult = await updateVariant(variant.id, {
-        title: title || null,
-        drop_custom_price: customPrice || null,
-        drop_description: dropDescription || null,
-        drop_public: dropPublic,
-        images: images.length > 0 ? images : null,
-      });
-
-      if (!variantResult.success) {
-        setError(variantResult.error || "Failed to save variant");
-        setIsSaving(false);
-        return;
-      }
-
-      // Update option values
-      const optionValuesToSave = Object.entries(optionValues)
-        .filter(([, value]) => value.trim() !== "")
-        .map(([optionId, value]) => ({ optionId, value }));
-
-      const optionValuesResult = await setVariantOptionValues(
-        variant.id,
-        product.id,
-        optionValuesToSave
-      );
-
-      if (!optionValuesResult.success) {
-        setError(optionValuesResult.error || "Failed to save option values");
-        setIsSaving(false);
-        return;
-      }
-
-      onSave(
-        {
-          ...variant,
+      if (isCreatingNew) {
+        // Create new variant
+        const createResult = await createVariant({
+          product_id: product.id,
           title: title || null,
           drop_custom_price: customPrice || null,
           drop_description: dropDescription || null,
           drop_public: dropPublic,
           images: images.length > 0 ? images : null,
-        },
-        optionValuesResult.optionValues
-      );
+          price: variant.price,
+          ocean_shipping_cost: variant.ocean_shipping_cost,
+          air_shipping_cost: variant.air_shipping_cost,
+        });
+
+        if (!createResult.success || !createResult.variantId) {
+          setError(createResult.error || "Failed to create variant");
+          setIsSaving(false);
+          return;
+        }
+
+        // Set option values for the new variant
+        const optionValuesToSave = Object.entries(optionValues)
+          .filter(([, value]) => value.trim() !== "")
+          .map(([optionId, value]) => ({ optionId, value }));
+
+        const optionValuesResult = await setVariantOptionValues(
+          createResult.variantId,
+          product.id,
+          optionValuesToSave
+        );
+
+        if (!optionValuesResult.success) {
+          setError(optionValuesResult.error || "Failed to save option values");
+          setIsSaving(false);
+          return;
+        }
+
+        // Call onSave to trigger refresh
+        onSave(
+          {
+            ...variant,
+            id: createResult.variantId,
+            title: title || null,
+            drop_custom_price: customPrice || null,
+            drop_description: dropDescription || null,
+            drop_public: dropPublic,
+            images: images.length > 0 ? images : null,
+          },
+          optionValuesResult.optionValues
+        );
+      } else {
+        // Update existing variant
+        const variantResult = await updateVariant(variant.id, {
+          title: title || null,
+          drop_custom_price: customPrice || null,
+          drop_description: dropDescription || null,
+          drop_public: dropPublic,
+          images: images.length > 0 ? images : null,
+        });
+
+        if (!variantResult.success) {
+          setError(variantResult.error || "Failed to save variant");
+          setIsSaving(false);
+          return;
+        }
+
+        // Update option values
+        const optionValuesToSave = Object.entries(optionValues)
+          .filter(([, value]) => value.trim() !== "")
+          .map(([optionId, value]) => ({ optionId, value }));
+
+        const optionValuesResult = await setVariantOptionValues(
+          variant.id,
+          product.id,
+          optionValuesToSave
+        );
+
+        if (!optionValuesResult.success) {
+          setError(optionValuesResult.error || "Failed to save option values");
+          setIsSaving(false);
+          return;
+        }
+
+        onSave(
+          {
+            ...variant,
+            title: title || null,
+            drop_custom_price: customPrice || null,
+            drop_description: dropDescription || null,
+            drop_public: dropPublic,
+            images: images.length > 0 ? images : null,
+          },
+          optionValuesResult.optionValues
+        );
+      }
     } catch {
       setError("An unexpected error occurred");
     } finally {
@@ -265,7 +320,7 @@ export default function VariantEditModal({
         <div className="px-6 py-3 border-b border-neutral-100">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-medium text-neutral-700">
-              Edit Variant
+              {isCreatingNew ? "Create New Variant" : "Edit Variant"}
             </h2>
             <button
               onClick={onClose}

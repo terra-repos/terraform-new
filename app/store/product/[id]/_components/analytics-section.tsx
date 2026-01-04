@@ -25,12 +25,12 @@ export default function AnalyticsSection({
       setLoading(true);
       const data = await getProductAnalytics(productId, organizationId);
 
-      if (data && data.orderItems) {
-        const totalRevenue = data.orderItems.reduce(
+      if (data && data.chartData) {
+        const totalRevenue = data.chartData.reduce(
           (sum, item) => sum + (item.total_price || 0),
           0
         );
-        const totalProfit = data.orderItems.reduce(
+        const totalProfit = data.chartData.reduce(
           (sum, item) => sum + (item.profit || 0),
           0
         );
@@ -80,7 +80,7 @@ export default function AnalyticsSection({
       </div>
 
       <div className="p-6">
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="space-y-4 mb-4">
           {metricsData.map((metric) => (
             <div
               key={metric.label}

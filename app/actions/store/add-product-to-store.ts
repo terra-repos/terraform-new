@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { notifyProductCreated } from "./notify-product-created";
 
 type VariantImage = { src: string };
 
@@ -122,6 +123,19 @@ export async function addProductToStore(
     console.error("Failed to update variant:", variantError);
     return { success: false, error: "Failed to update variant" };
   }
+
+  // Notify Terra team about new product
+  const { data: storeWithName } = await service
+    .from("drop_stores")
+    .select("store_name")
+    .eq("id", store.id)
+    .single();
+
+  await notifyProductCreated(
+    input.productId,
+    storeWithName?.store_name || "Unknown Store",
+    user.id
+  );
 
   console.log("=== addProductToStore SUCCESS ===");
   return { success: true };

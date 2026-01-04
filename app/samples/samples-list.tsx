@@ -77,22 +77,39 @@ export default function SamplesList({ items }: SamplesListProps) {
   const handleSubmitSampleRequests = async () => {
     if (localItems.length === 0) return;
 
+    console.log("🎯 [Client] Starting sample request submission");
     setIsSubmittingOrder(true);
     try {
+      console.log("🎯 [Client] Calling submitSampleRequests()");
       const result = await submitSampleRequests();
+      console.log("🎯 [Client] Received result:", result);
+      console.log("🎯 [Client] Result type:", typeof result);
+      console.log("🎯 [Client] Result is null?", result === null);
+      console.log("🎯 [Client] Result is undefined?", result === undefined);
+
+      if (!result) {
+        console.error("❌ [Client] Result is null or undefined!");
+        alert("Server returned an invalid response. Please try again.");
+        setIsSubmittingOrder(false);
+        return;
+      }
 
       if (result.success) {
+        console.log("✅ [Client] Success! Navigating to sample orders");
         // Navigate to sample orders page on success
+        // Don't set isSubmittingOrder to false - keep the loading state during navigation
         router.push("/sample-orders");
-        router.refresh(); // Refresh to update sidebar unlock state
+        console.log("✅ [Client] Navigation initiated");
       } else {
+        console.error("❌ [Client] Request failed:", result.error);
         alert(
           result.error || "Failed to submit sample requests. Please try again."
         );
+        setIsSubmittingOrder(false);
       }
-    } catch {
+    } catch (error) {
+      console.error("❌ [Client] Exception caught:", error);
       alert("An error occurred. Please try again.");
-    } finally {
       setIsSubmittingOrder(false);
     }
   };

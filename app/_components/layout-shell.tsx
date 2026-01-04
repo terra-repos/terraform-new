@@ -26,7 +26,7 @@ export default function LayoutShell({
   hasSampleOrders = false,
   hasDeliveredOrder = false,
 }: LayoutShellProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
     <ThemeProvider

@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { type CreateVariantsInput } from "@/app/api/store/ai-variants/route";
+import { notifyVariantCreated } from "./notify-variant-created";
 
 type VariantImage = { src: string };
 
@@ -53,7 +54,7 @@ export async function executeAIVariantOperations(
 
   const { data: product } = await service
     .from("products")
-    .select("id, store_id")
+    .select("id, store_id, title")
     .eq("id", productId)
     .eq("store_id", store.id)
     .single();
@@ -231,6 +232,18 @@ export async function executeAIVariantOperations(
       images: v.images as VariantImage[],
       option_values: operations.variants[i].option_values,
     }));
+
+    // Notify Terra team about each new variant
+    if (createdVariants && createdVariants.length > 0) {
+      for (const variant of createdVariants) {
+        await notifyVariantCreated(
+          productId,
+          variant.title,
+          product.title || "Unknown Product",
+          user.id
+        );
+      }
+    }
 
     console.log("=== executeAIVariantOperations SUCCESS ===");
     return { success: true, createdVariants: result };

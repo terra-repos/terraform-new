@@ -49,7 +49,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
       )}
 
       {/* Main image */}
-      <div className="flex-1 relative aspect-square bg-neutral-100 rounded-xl overflow-hidden">
+      <div className="flex-1 relative aspect-[4/3] max-h-[400px] bg-neutral-100 rounded-xl overflow-hidden">
         <Image
           src={currentImage}
           alt={title}

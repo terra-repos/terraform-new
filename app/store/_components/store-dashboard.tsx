@@ -164,10 +164,7 @@ function ProductsTab({ products }: { products: StoreProduct[] }) {
             key={product.id}
             className="bg-white rounded-xl border border-neutral-200 overflow-hidden hover:shadow-md hover:border-orange-200 transition-all flex flex-col"
           >
-            <Link
-              href={`/store/product/${product.id}`}
-              className="flex-1"
-            >
+            <Link href={`/store/product/${product.id}`} className="flex-1">
               {/* Image */}
               <div className="aspect-square bg-neutral-100 relative">
                 {product.thumbnail_image ? (
@@ -208,18 +205,6 @@ function ProductsTab({ products }: { products: StoreProduct[] }) {
                 </div>
               </div>
             </Link>
-
-            {/* View Analytics Button */}
-            <div className="p-4 pt-0">
-              <Link
-                href={`/store/product/${product.id}`}
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center justify-center gap-2 px-3 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors text-sm font-medium w-full"
-              >
-                <BarChart3 className="h-4 w-4" />
-                View Analytics
-              </Link>
-            </div>
           </div>
         ))}
       </div>
@@ -437,8 +422,12 @@ function OrdersTab({ organizationId }: { organizationId: string }) {
                 <div
                   className="fixed z-50 w-48 bg-white rounded-lg shadow-lg border border-neutral-200 py-1"
                   style={{
-                    top: `${statusButtonRef.current.getBoundingClientRect().bottom + 4}px`,
-                    left: `${statusButtonRef.current.getBoundingClientRect().left}px`,
+                    top: `${
+                      statusButtonRef.current.getBoundingClientRect().bottom + 4
+                    }px`,
+                    left: `${
+                      statusButtonRef.current.getBoundingClientRect().left
+                    }px`,
                   }}
                 >
                   {STATUS_OPTIONS.map((option) => (
